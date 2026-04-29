@@ -9,10 +9,8 @@ class BsoptError(Exception):
     """Base exception for all bsopt errors."""
 
 
-
 class ConfigurationError(BsoptError):
     """Raised when there is a configuration error."""
-
 
 
 class ValidationError(BsoptError):
@@ -27,35 +25,28 @@ class DatabaseError(BsoptError):
     """Raised when there is a database error."""
 
 
-
 class CacheError(BsoptError):
     """Raised when there is a cache error."""
-
 
 
 class QueueError(BsoptError):
     """Raised when there is a message queue error."""
 
 
-
 class StorageError(BsoptError):
     """Raised when there is a storage error."""
-
 
 
 class PricingError(BsoptError):
     """Raised when there is an error in pricing computations."""
 
 
-
 class ScraperError(BsoptError):
     """Raised when there is an error in market data scraping."""
 
 
-
 class MLOpsError(BsoptError):
     """Raised when there is an error in MLOps workflows."""
-
 
 
 class CFLViolationError(PricingError):
