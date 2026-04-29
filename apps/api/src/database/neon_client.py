@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import contextlib
 import time
-from typing import TYPE_CHECKING
+from collections.abc import AsyncIterator
 
 import asyncpg
 import structlog
 
 from src.config import get_settings
 from src.metrics import NEON_ERRORS_TOTAL, NEON_POOL_IDLE, NEON_POOL_SIZE, NEON_QUERY_DURATION
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
 
 logger = structlog.get_logger(__name__)
 _pool: asyncpg.Pool | None = None
@@ -40,25 +37,27 @@ async def get_pool() -> asyncpg.Pool:
 
 
 async def close_pool() -> None:
-    """Close the global pool and reset the variable."""
+    """Close the global pool."""
     global _pool  # noqa: PLW0603
-    if _pool is not None:
+    if _pool:
         await _pool.close()
         _pool = None
+        logger.info("neondb_pool_closed", step="shutdown", rows=0)
 
 
 @contextlib.asynccontextmanager
 async def acquire() -> AsyncIterator[asyncpg.Connection]:
     """Acquire a connection; track duration and errors via Prometheus."""
+    pool = await get_pool()
     start = time.perf_counter()
     try:
-        pool = await get_pool()
         async with pool.acquire() as conn:
             yield conn
     except Exception as exc:
         NEON_ERRORS_TOTAL.labels(operation="acquire").inc()
         logger.error(
             "neondb_acquire_failed",
+            event="error",
             error_type=type(exc).__name__,
             error_message=str(exc),
             component="neon_client",

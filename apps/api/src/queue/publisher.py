@@ -1,10 +1,10 @@
-"""RabbitMQ task publisher with optional compression — Phase 1."""
+"""RabbitMQ task publisher with optional compression."""
 
 from __future__ import annotations
 
 import gzip
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aio_pika
 import structlog
@@ -15,15 +15,27 @@ from src.queue.rabbitmq_client import get_rabbitmq_connection
 
 logger = structlog.get_logger(__name__)
 
+if TYPE_CHECKING:
+    from aio_pika.abc import FieldValue
+
+
+def _create_watchdog_payload(file_path: str, market: str) -> dict[str, str]:
+    """Pure function to create the watchdog task payload."""
+    return {
+        "file_path": file_path,
+        "market": market,
+        "type": "file_upload",
+    }
+
 
 async def publish_watchdog_task(file_path: str, market: str) -> None:
-    """Publish a file detection task to bs.watchdog queue."""
-    payload = {"file_path": file_path, "market": market, "type": "file_upload"}
+    """Publish a task to the bs.watchdog queue with optional compression."""
+    payload = _create_watchdog_payload(file_path, market)
     await _publish("bs.watchdog", payload)
 
 
 async def publish_scraper_task(market: str, run_id: str) -> None:
-    """Publish a scraper trigger task to bs.scrapers queue."""
+    """Publish a scraper trigger task to the bs.scrapers queue."""
     payload = {"market": market, "run_id": run_id, "type": "scrape_trigger"}
     await _publish("bs.scrapers", payload)
 
@@ -34,10 +46,10 @@ async def _publish(queue_name: str, payload: dict[str, Any]) -> None:
     connection = await get_rabbitmq_connection()
 
     async with connection.channel() as channel:
-        queue = await channel.declare_queue(queue_name, durable=True)
+        await channel.declare_queue(queue_name, durable=True)
 
         body = json.dumps(payload).encode("utf-8")
-        headers = {}
+        headers: dict[str, FieldValue] = {}
 
         if settings.enable_compression and len(body) > 1024:
             body = gzip.compress(body)
@@ -56,7 +68,7 @@ async def _publish(queue_name: str, payload: dict[str, Any]) -> None:
         logger.info(
             "message_published",
             queue=queue_name,
-            compressed="gzip" in headers,
+            compressed="content-encoding" in headers,
             step="queue",
             rows=0,
         )

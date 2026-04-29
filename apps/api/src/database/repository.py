@@ -1,15 +1,102 @@
-"""Database repository for NeonDB operations."""
+"""Database repository for NeonDB operations — Phase 2."""
 
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, cast
+from datetime import UTC, date, datetime
+from typing import cast
+from uuid import UUID
+
+import structlog
 
 from src.database.neon_client import acquire
 
-if TYPE_CHECKING:
-    from datetime import date
-    from uuid import UUID
+logger = structlog.get_logger(__name__)
+
+
+async def get_user_push_subscriptions(user_id: str) -> list[str]:
+    """Fetch user's push subscriptions from the users table."""
+    async with acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT notification_preferences FROM users WHERE id = $1", user_id
+        )
+        if row and row["notification_preferences"]:
+            prefs = row["notification_preferences"]
+            if isinstance(prefs, str):
+                prefs = json.loads(prefs)
+            return cast("list[str]", prefs.get("push_subscriptions", []))
+    return []
+
+
+async def query_recent_mape(method_type: str, days: int = 7) -> float:
+    """Query recent MAPE for a method from validation_metrics."""
+    async with acquire() as conn:
+        val = await conn.fetchval(
+            """
+            SELECT AVG(absolute_error)
+            FROM validation_metrics
+            WHERE method_result_id IN (
+                SELECT id FROM method_results
+                WHERE method_type = $1 AND created_at > NOW() - interval '$2 days'
+            )
+            """,
+            method_type,
+            days,
+        )
+        return float(val) if val is not None else 0.0
+
+
+async def save_audit_log(
+    pipeline_run_id: str | UUID,
+    step_name: str,
+    status: str,
+    rows_affected: int = 0,
+    message: str = "",
+) -> None:
+    """Insert a row into the audit_log table."""
+    async with acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO audit_log (pipeline_run_id, step_name, status, rows_affected, message)
+            VALUES ($1, $2, $3, $4, $5)
+            """,
+            str(pipeline_run_id),
+            step_name,
+            status,
+            rows_affected,
+            message,
+        )
+
+
+async def save_market_data(
+    option_id: str | UUID,
+    trade_date: date,
+    bid: float | None,
+    ask: float | None,
+    volume: int | None,
+    oi: int | None,
+    data_source: str,
+    implied_vol: float | None = None,
+) -> None:
+    """Upsert market data."""
+    async with acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO market_data (option_id, trade_date, bid, ask, volume, oi, data_source, implied_vol)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (option_id, trade_date) DO UPDATE
+            SET bid = EXCLUDED.bid, ask = EXCLUDED.ask, volume = EXCLUDED.volume, 
+                oi = EXCLUDED.oi, implied_vol = EXCLUDED.implied_vol
+            """,
+            str(option_id),
+            trade_date,
+            bid,
+            ask,
+            volume,
+            oi,
+            data_source,
+            implied_vol,
+        )
 
 
 async def save_option_parameters(
@@ -19,20 +106,20 @@ async def save_option_parameters(
     volatility: float,
     risk_free_rate: float,
     option_type: str,
-    market_source: str | None = None,
-    user_id: UUID | None = None,
-) -> UUID:
-    """Upsert option parameters and return the record ID."""
+    market_source: str,
+    created_by: str | UUID | None = None,
+) -> str:
+    """Insert option parameters and return the generated UUID."""
     async with acquire() as conn:
         row = await conn.fetchrow(
             """
             INSERT INTO option_parameters (
-                underlying_price, strike_price, time_to_maturity,
+                underlying_price, strike_price, time_to_expiry,
                 volatility, risk_free_rate, option_type, market_source, created_by
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (underlying_price, strike_price, time_to_maturity, volatility, risk_free_rate, option_type, market_source)
-            DO UPDATE SET underlying_price = EXCLUDED.underlying_price
+            ON CONFLICT (underlying_price, strike_price, time_to_expiry, volatility, risk_free_rate, option_type, market_source) 
+            DO UPDATE SET updated_at = NOW()
             RETURNING id
             """,
             underlying_price,
@@ -42,303 +129,41 @@ async def save_option_parameters(
             risk_free_rate,
             option_type,
             market_source,
-            user_id,
+            str(created_by) if created_by else None,
         )
-        assert row is not None
-        return cast("UUID", row["id"])
-
-
-async def save_method_result(
-    option_id: UUID,
-    method_type: str,
-    computed_price: float,
-    parameter_set: dict[str, Any] | None = None,
-    parameter_hash: str | None = None,
-    exec_seconds: float | None = None,
-    converged: bool | None = None,
-    replications: int | None = None,
-    mlflow_run_id: str | None = None,
-) -> UUID:
-    """Save a pricing result."""
-    p_hash = parameter_hash or "default"
-
-    async with acquire() as conn:
-        row = await conn.fetchrow(
-            """
-            INSERT INTO method_results (
-                option_id, method_type, parameter_set, parameter_hash,
-                computed_price, exec_seconds, converged, replications, mlflow_run_id
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (option_id, method_type, parameter_hash)
-            DO UPDATE SET computed_price = EXCLUDED.computed_price
-            RETURNING id
-            """,
-            option_id,
-            method_type,
-            json.dumps(parameter_set) if parameter_set else None,
-            p_hash,
-            computed_price,
-            exec_seconds,
-            converged,
-            replications,
-            mlflow_run_id,
-        )
-        assert row is not None
-        return cast("UUID", row["id"])
-
-
-async def query_recent_mape(method_type: str, days: int = 7) -> float:
-    """Query average MAPE for a method over the last N days."""
-    async with acquire() as conn:
-        val = await conn.fetchval(
-            """
-            SELECT AVG(mape)
-            FROM validation_metrics vm
-            JOIN method_results mr ON vm.method_result_id = mr.id
-            WHERE mr.method_type = $1
-            AND vm.created_at > NOW() - INTERVAL '1 day' * $2
-            """,
-            method_type,
-            days,
-        )
-        return float(val or 0.0)
+        return str(row["id"]) if row else ""
 
 
 async def save_scrape_run(
-    market: str,
-    scraper_class: str,
-    status: str = "running",
-    triggered_by: UUID | None = None,
-) -> UUID:
-    """Create a new scrape run record."""
+    market: str, scraper_class: str, started_at: datetime | None = None, status: str = "running"
+) -> str:
+    """Insert a scrape run and return its UUID."""
+    if started_at is None:
+        started_at = datetime.now(UTC)
     async with acquire() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO scrape_runs (market, scraper_class, status, triggered_by)
+            INSERT INTO scrape_runs (market, scraper_class, started_at, status)
             VALUES ($1, $2, $3, $4)
             RETURNING id
             """,
             market,
             scraper_class,
+            started_at,
             status,
-            triggered_by,
         )
-        assert row is not None
-        return cast("UUID", row["id"])
+        return str(row["id"]) if row else ""
 
 
 async def update_scrape_run(
-    run_id: UUID,
-    status: str,
-    rows_inserted: int = 0,
+    run_id: str | UUID, finished_at: datetime, row_counts: int, status: str
 ) -> None:
-    """Update an existing scrape run record."""
+    """Update an existing scrape run."""
     async with acquire() as conn:
         await conn.execute(
-            """
-            UPDATE scrape_runs
-            SET status = $2, rows_inserted = $3, finished_at = NOW()
-            WHERE id = $1
-            """,
-            run_id,
+            "UPDATE scrape_runs SET finished_at = $1, row_counts = $2, status = $3 WHERE id = $4",
+            finished_at,
+            row_counts,
             status,
-            rows_inserted,
-        )
-
-
-async def save_market_data(
-    option_id: UUID,
-    trade_date: date,
-    bid: float | None = None,
-    ask: float | None = None,
-    volume: int | None = None,
-    oi: int | None = None,
-    implied_vol: float | None = None,
-    data_source: str | None = None,
-) -> None:
-    """Save market data for an option."""
-    async with acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO market_data (option_id, trade_date, bid, ask, volume, oi, implied_vol, data_source)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (option_id, trade_date)
-            DO UPDATE SET bid = EXCLUDED.bid, ask = EXCLUDED.ask, volume = EXCLUDED.volume
-            """,
-            option_id,
-            trade_date,
-            bid,
-            ask,
-            volume,
-            oi,
-            implied_vol,
-            data_source,
-        )
-
-
-async def save_validation_metric(
-    option_id: UUID,
-    method_result_id: UUID,
-    absolute_error: float,
-    mape: float,
-    market_deviation: float | None = None,
-) -> None:
-    """Save a validation metric."""
-    async with acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO validation_metrics (option_id, method_result_id, absolute_error, mape, market_deviation)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (option_id, method_result_id)
-            DO UPDATE SET absolute_error = EXCLUDED.absolute_error, mape = EXCLUDED.mape
-            """,
-            option_id,
-            method_result_id,
-            absolute_error,
-            mape,
-            market_deviation,
-        )
-
-
-async def save_audit_log(
-    step_name: str,
-    status: str,
-    pipeline_run_id: UUID | None = None,
-    rows_affected: int = 0,
-    message: str | None = None,
-) -> None:
-    """Save an audit log record."""
-    async with acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO audit_log (pipeline_run_id, step_name, status, rows_affected, message)
-            VALUES ($1, $2, $3, $4, $5)
-            """,
-            pipeline_run_id,
-            step_name,
-            status,
-            rows_affected,
-            message,
-        )
-
-
-async def get_market_data(market_source: str, limit: int = 100) -> list[dict[str, Any]]:
-    """Retrieve recent market data joined with option parameters."""
-    async with acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT md.*, op.underlying_price, op.strike_price, op.volatility, op.time_to_maturity, op.option_type
-            FROM market_data md
-            JOIN option_parameters op ON md.option_id = op.id
-            WHERE md.data_source = $1
-            ORDER BY md.trade_date DESC
-            LIMIT $2
-            """,
-            market_source,
-            limit,
-        )
-        return [dict(r) for r in rows]
-
-
-async def get_latest_metrics(limit: int = 50) -> list[dict[str, Any]]:
-    """Retrieve latest validation metrics for dashboard."""
-    async with acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT vm.*, mr.method_type, op.underlying_price, op.strike_price
-            FROM validation_metrics vm
-            JOIN method_results mr ON vm.method_result_id = mr.id
-            JOIN option_parameters op ON mr.option_id = op.id
-            ORDER BY vm.created_at DESC
-            LIMIT $1
-            """,
-            limit,
-        )
-        return [dict(r) for r in rows]
-
-
-async def get_user_push_subscriptions(user_id: str) -> list[str]:
-    """Retrieve all web push subscriptions for a user."""
-    async with acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT subscription_json FROM user_push_subscriptions WHERE user_id = $1",
-            user_id,
-        )
-        return [r["subscription_json"] for r in rows]
-
-
-async def save_user_push_subscription(user_id: str, subscription_json: str) -> None:
-    """Save a new web push subscription for a user."""
-    async with acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO user_push_subscriptions (user_id, subscription_json)
-            VALUES ($1, $2)
-            ON CONFLICT (user_id, subscription_json) DO NOTHING
-            """,
-            user_id,
-            subscription_json,
-        )
-
-
-async def save_model_metadata(
-    name: str,
-    version: str,
-    uri: str,
-    metadata: dict[str, Any],
-) -> None:
-    """Save model metadata to ml_experiments table."""
-    async with acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO ml_experiments (experiment_name, model_version, model_uri, metadata)
-            VALUES ($1, $2, $3, $4)
-            """,
-            name,
-            version,
-            uri,
-            json.dumps(metadata),
-        )
-
-
-async def get_latest_model(name: str) -> dict[str, Any]:
-    """Retrieve the latest version of a model."""
-    async with acquire() as conn:
-        row = await conn.fetchrow(
-            """
-            SELECT model_version as version, model_uri as uri, metadata
-            FROM ml_experiments
-            WHERE experiment_name = $1
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
-            name,
-        )
-        if row:
-            return {
-                "version": row["version"],
-                "uri": row["uri"],
-                "metadata": json.loads(row["metadata"]),
-            }
-        return {}
-
-
-async def save_notification(
-    user_id: str,
-    title: str,
-    body: str,
-    severity: str,
-) -> None:
-    """Persist a notification to the database."""
-    async with acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO notifications (user_id, title, body, severity)
-            VALUES ($1, $2, $3, $4)
-            """,
-            user_id,
-            title,
-            body,
-            severity,
+            str(run_id),
         )
