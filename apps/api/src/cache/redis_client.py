@@ -37,7 +37,7 @@ async def close_redis() -> None:
     """Close the global Redis client instance."""
     if RedisManager._redis is not None:
         try:
-            await RedisManager._redis.aclose()
+            await RedisManager._redis.close()
         except Exception:
             pass
         RedisManager._redis = None

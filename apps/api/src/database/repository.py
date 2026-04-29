@@ -85,7 +85,7 @@ async def save_market_data(
             INSERT INTO market_data (option_id, trade_date, bid, ask, volume, oi, data_source, implied_vol)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (option_id, trade_date) DO UPDATE
-            SET bid = EXCLUDED.bid, ask = EXCLUDED.ask, volume = EXCLUDED.volume, 
+            SET bid = EXCLUDED.bid, ask = EXCLUDED.ask, volume = EXCLUDED.volume,
                 oi = EXCLUDED.oi, implied_vol = EXCLUDED.implied_vol
             """,
             str(option_id),
@@ -118,7 +118,7 @@ async def save_option_parameters(
                 volatility, risk_free_rate, option_type, market_source, created_by
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (underlying_price, strike_price, time_to_expiry, volatility, risk_free_rate, option_type, market_source) 
+            ON CONFLICT (underlying_price, strike_price, time_to_expiry, volatility, risk_free_rate, option_type, market_source)
             DO UPDATE SET updated_at = NOW()
             RETURNING id
             """,

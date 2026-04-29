@@ -22,7 +22,7 @@ class MinioClient:
         endpoint = self.settings.minio_endpoint
         if not endpoint.startswith("http"):
             endpoint = f"http://{endpoint}"
-            
+
         return self.session.client(
             "s3",
             endpoint_url=endpoint,
