@@ -48,10 +48,20 @@ async def test_ray_runner_local():
         ray.init(num_cpus=1, include_dashboard=False, ignore_reinit_error=True)
     runner.connect()
     
-    # Test remote task directly
-    res_dict = await price_remote.remote(params.__dict__, "analytical")
-    assert res_dict["method_type"] == "analytical"
-    assert res_dict["computed_price"] > 0
+    # Test remote task directly (using ._function to bypass Ray for coverage)
+    # or just call it if we can. In Ray 2.x, we use price_remote.remote()
+    # To get coverage, we must call it in the same process.
+    # We'll use the .__wrapped__ attribute if available (standard for decorated funcs)
+    # or we can just import the logic.
+    res_dict = price_remote.remote(params.__dict__, "analytical")
+    res = ray.get(res_dict)
+    assert res["method_type"] == "analytical"
+    assert res["computed_price"] > 0
+    
+    # Also call it locally to ensure coverage (since ray.get runs it in a worker)
+    # price_remote is a RemoteFunction.
+    local_res = price_remote.__dict__["_function"](params.__dict__, "analytical")
+    assert local_res["method_type"] == "analytical"
 
 @pytest.mark.unit
 @pytest.mark.asyncio
