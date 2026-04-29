@@ -280,6 +280,8 @@ async def save_user_push_subscription(user_id: str, subscription_json: str) -> N
             user_id,
             subscription_json,
         )
+
+
 async def save_model_metadata(
     name: str,
     version: str,

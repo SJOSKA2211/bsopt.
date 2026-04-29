@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 
 import structlog
@@ -17,7 +18,11 @@ async def process_watchdog_task(message: IncomingMessage) -> None:
     """Callback for processing watchdog file drop tasks."""
     async with message.process():
         try:
-            payload = json.loads(message.body.decode())
+            body = message.body
+            if message.headers.get("content-encoding") == "gzip":
+                body = gzip.decompress(body)
+
+            payload = json.loads(body.decode())
             file_path = payload.get("file_path")
             market = payload.get("market", "unknown")
 

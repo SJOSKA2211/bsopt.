@@ -1,4 +1,4 @@
-"""Configuration management using Pydantic Settings."""
+"""Configuration management using pydantic-settings."""
 
 from __future__ import annotations
 
@@ -8,12 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """System settings for bsopt."""
+    """System settings for the bsopt platform."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-    debug: bool = False
-
-    # NeonDB
+    # NeonDB (PostgreSQL)
     neon_connection_string: str = (
         "postgresql://neondb_owner:npg_imMo5wPNOUX8@ep-wild-sea-anid9s9s-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     )
@@ -22,13 +19,13 @@ class Settings(BaseSettings):
     )
 
     # Redis
-    redis_url: str = "redis://redis:6379/0"
-    redis_password: str = "admin"
+    redis_url: str = "redis://redis:7379/0"
+    redis_password: str = "placeholder_redis_pass_20_chars"
 
     # RabbitMQ
-    rabbitmq_url: str = "amqp://admin:admin@rabbitmq:5672/"
-    rabbitmq_user: str = "admin"
-    rabbitmq_password: str = "admin"
+    rabbitmq_url: str = "amqp://bsopt_user:placeholder_rabbit_pass_20@rabbitmq:5672/"
+    rabbitmq_user: str = "bsopt_user"
+    rabbitmq_password: str = "placeholder_rabbit_pass_20"
 
     # MinIO
     minio_endpoint: str = "minio:9000"
@@ -48,29 +45,36 @@ class Settings(BaseSettings):
     mlflow_s3_endpoint_url: str = "http://minio:9000"
 
     # Watchdog
-    watchdog_watch_dir: str = "data/watch"
+    watchdog_watch_dir: str = "/app/data/watch"
 
-    # Grafana
-    grafana_admin_password: str = "placeholder16chars"
-
-    # Auth & Frontend URLs (Secrets with GH_ prefix as per prompt)
-    nextauth_secret: str = "placeholder32charsrandomstring!!!"
+    # Auth & API
+    nextauth_secret: str = "placeholder_nextauth_secret_32_chars"
     nextauth_url: str = "https://bsopt.vercel.app"
-    gh_client_id: str | None = None
-    gh_client_secret: str | None = None
-    gh_token: str | None = None
-    gh_deploy_hook: str | None = None
-    gh_packages_token: str | None = None
-    google_client_id: str | None = None
-    google_client_secret: str | None = None
-    resend_api_key: str | None = None
-    gh_vapid_private_key: str | None = None
-    gh_vapid_public_key: str | None = None
+    gh_client_id: str = "placeholder_gh_id"
+    gh_client_secret: str = "placeholder_gh_secret"
+    gh_token: str = "placeholder_gh_token"
+    gh_deploy_hook: str = "placeholder_gh_hook"
+    gh_packages_token: str = "placeholder_gh_pkg_token"
+    google_client_id: str = "placeholder_google_id"
+    google_client_secret: str = "placeholder_google_secret"
+    resend_api_key: str = "placeholder_resend_key"
+
+    # Public URLs
     next_public_ws_url: str = "wss://api.bsopt.example.com/ws"
     next_public_api_url: str = "https://api.bsopt.example.com"
 
-    # Optimization
+    # Environment
+    env: str = "production"
+    debug: bool = False
     enable_compression: bool = True
+
+    # Web Push VAPID keys
+    gh_vapid_private_key: str | None = None
+    gh_vapid_public_key: str | None = None
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
+    )
 
 
 @lru_cache
