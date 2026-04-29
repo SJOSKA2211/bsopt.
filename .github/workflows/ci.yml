@@ -1,0 +1,148 @@
+name: CI
+on:
+  push:         { branches: ["**"] }
+  pull_request: { branches: [main, develop] }
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+ 
+jobs:
+  lint-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.14.4" }
+      - run: pip install uv
+      - run: cd apps/api && uv sync --all-groups
+      - run: cd apps/api && uv run black  --check --line-length 100 src/
+      - run: cd apps/api && uv run isort  --check-only --profile black src/
+      - run: cd apps/api && uv run ruff   check src/ --show-source
+      - run: cd apps/api && uv run mypy   --strict src/
+ 
+  lint-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: cd apps/web && npm ci
+      - run: cd apps/web && npx tsc --noEmit
+      - run: cd apps/web && npx eslint . --max-warnings 0 --ext .ts,.tsx
+      - run: cd apps/web && npx prettier --check "**/*.{ts,tsx,json,css}"
+ 
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.14.4" }
+      - run: pip install uv
+      - run: cd apps/api && uv sync --all-groups
+      - run: |
+          cd apps/api
+          uv run pytest tests/unit/ -m unit \
+            --cov=src --cov-branch \
+            --cov-report=xml --cov-fail-under=100 -v
+      - uses: codecov/codecov-action@v4
+        with: { files: apps/api/coverage.xml, fail_ci_if_error: true, token: ${{ secrets.CODECOV_TOKEN }} }
+ 
+  integration-tests:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    env:
+      NEON_CONNECTION_STRING: ${{ secrets.NEON_CONNECTION_STRING }}
+      REDIS_URL:              redis://localhost:6379/0
+      REDIS_PASSWORD:         ${{ secrets.REDIS_PASSWORD_TEST }}
+      RABBITMQ_URL:           amqp://test:test@localhost:5672/
+      MINIO_ENDPOINT:         localhost:9000
+      MINIO_ACCESS_KEY:       ${{ secrets.MINIO_ACCESS_KEY_TEST }}
+      MINIO_SECRET_KEY:       ${{ secrets.MINIO_SECRET_KEY_TEST }}
+      MLFLOW_TRACKING_URI:    http://localhost:5000
+      RAY_ADDRESS:            local
+    services:
+      redis:    { image: "redis:7.4-alpine", ports: ["6379:6379"] }
+      rabbitmq:
+        image: rabbitmq:4.0-management-alpine
+        env:   { RABBITMQ_DEFAULT_USER: test, RABBITMQ_DEFAULT_PASS: test }
+        ports: ["5672:5672"]
+      minio:
+        image: minio/minio:RELEASE.2024-05-01T01-11-10Z
+        env:   { MINIO_ROOT_USER: ${{ secrets.MINIO_ACCESS_KEY_TEST }}, MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_SECRET_KEY_TEST }} }
+        ports: ["9000:9000"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.14.4" }
+      - run: pip install uv
+      - run: cd apps/api && uv sync --all-groups
+      - run: |
+          cd apps/api
+          uv run pytest tests/integration/ -m integration \
+            --cov=src --cov-branch --cov-append \
+            --cov-fail-under=100 -v
+ 
+  e2e-smoke:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.14.4" }
+      - run: pip install uv && cd apps/api && uv sync
+      - run: cd apps/api && uv run playwright install chromium --with-deps
+      - name: SPY reachability
+        run: |
+          cd apps/api && uv run python -c "
+import asyncio
+from playwright.async_api import async_playwright
+async def f():
+    async with async_playwright() as p:
+        b = await p.chromium.launch(headless=True)
+        g = await b.new_page()
+        await g.goto('https://finance.yahoo.com/quote/SPY/options',timeout=20000)
+        await g.wait_for_selector('table',timeout=15000)
+        await b.close()
+        print('PASS')
+asyncio.run(f())"
+ 
+  docker-build:
+    needs: [lint-backend, unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
+        with:
+          context: apps/api
+          push: false
+          tags: bsopt-api:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: |
+          docker run --rm \
+            -e NEON_CONNECTION_STRING=postgresql://x:x@localhost/x?sslmode=require \
+            -e REDIS_URL=redis://localhost:6379/0 \
+            -e REDIS_PASSWORD=placeholder20chars \
+            -e RABBITMQ_URL=amqp://x:x@localhost:5672/ \
+            -e MINIO_ENDPOINT=localhost:9000 \
+            -e MINIO_ACCESS_KEY=minioadmin \
+            -e MINIO_SECRET_KEY=minioadmin \
+            bsopt-api:ci-${{ github.sha }} \
+            python -c "from src.methods.analytical import BlackScholesAnalytical; print('OK')"
+ 
+  frontend-tests:
+    needs: lint-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: cd apps/web && npm ci
+      - run: |
+          cd apps/web && npx vitest run \
+            --coverage \
+            --coverage.thresholds.lines=100 \
+            --coverage.thresholds.branches=100 \
+            --coverage.thresholds.functions=100 \
+            --coverage.thresholds.statements=100

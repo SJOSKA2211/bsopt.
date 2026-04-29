@@ -1,0 +1,20 @@
+groups:
+  - name: bsopt_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(bsopt_neondb_errors_total[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High DB Error Rate on {{ $labels.operation }}"
+          description: "NeonDB error rate is above 5% for the last minute."
+
+      - alert: ModelDrift
+        expr: bsopt_price_mape_percent > 5.0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model Drift Detected for {{ $labels.method_type }}"
+          description: "MAPE has exceeded 5% for 10 minutes."

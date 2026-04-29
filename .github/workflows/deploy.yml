@@ -1,0 +1,26 @@
+name: Deploy
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+ 
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/api
+          push: true
+          tags: ghcr.io/${{ github.repository }}/api:latest
+          secrets: |
+            GH_PACKAGES_TOKEN=${{ secrets.GH_PACKAGES_TOKEN }}
+ 
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger Vercel Deploy
+        run: curl -X POST ${{ secrets.GH_DEPLOY_HOOK }}

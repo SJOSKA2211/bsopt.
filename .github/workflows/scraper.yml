@@ -1,0 +1,31 @@
+name: Scraper
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight
+  workflow_dispatch:
+    inputs:
+      market:
+        description: 'Market to scrape'
+        required: true
+        default: 'spy'
+      date:
+        description: 'Target date'
+        required: false
+ 
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.14.4" }
+      - run: pip install uv
+      - run: cd apps/api && uv sync
+      - run: cd apps/api && uv run playwright install chromium --with-deps
+      - name: Execute Scrape
+        env:
+          NEON_CONNECTION_STRING: ${{ secrets.NEON_CONNECTION_STRING }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          cd apps/api
+          uv run python scripts/collect.py --market ${{ github.event.inputs.market || 'spy' }}

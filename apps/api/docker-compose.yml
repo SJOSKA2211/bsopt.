@@ -1,0 +1,157 @@
+
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+    networks:
+      - bsopt_net
+
+  api:
+    build:
+      context: .
+      target: runtime
+    environment:
+      - NEON_CONNECTION_STRING=${NEON_CONNECTION_STRING}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - RAY_ADDRESS=ray://ray-head:10001
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - redis
+      - rabbitmq
+      - minio
+      - ray-head
+    networks:
+      - bsopt_net
+
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - bsopt_net
+
+  rabbitmq:
+    image: rabbitmq:4.0-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - bsopt_net
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-01T01-11-10Z
+    command: server /data --console-address :9001
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - bsopt_net
+
+  ray-head:
+    image: rayproject/ray:2.10.0-py311
+    command: ray start --head --dashboard-host=0.0.0.0 --block
+    # volumes:
+    #   - ray_data:/tmp/ray
+    ports:
+      - "8265:8265"
+      - "10001:10001"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    networks:
+      - bsopt_net
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.13.0
+    command: sh -c "pip install --no-cache-dir psycopg2-binary && mlflow server --backend-store-uri $$MLFLOW_BACKEND_STORE_URI --default-artifact-root $$MLFLOW_ARTIFACT_ROOT --host 0.0.0.0 --port 5000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://0.0.0.0:5000
+      - MLFLOW_BACKEND_STORE_URI=${NEON_CONNECTION_STRING}
+      - MLFLOW_ARTIFACT_ROOT=s3://bsopt-models
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY}
+    ports:
+      - "5000:5000"
+    depends_on:
+      - minio
+    networks:
+      - bsopt_net
+
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=90d'
+    networks:
+      - bsopt_net
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_UNIFIED_ALERTING_ENABLED=true
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    networks:
+      - bsopt_net
+
+networks:
+  bsopt_net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
+  ray_data:
+  grafana_data:

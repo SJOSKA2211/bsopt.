@@ -1,0 +1,73 @@
+"""RabbitMQ task publisher with optional compression."""
+
+from __future__ import annotations
+
+import gzip
+import json
+from typing import TYPE_CHECKING
+
+import aio_pika
+
+from src.config import get_settings
+from src.metrics import RABBITMQ_PUBLISHED
+from src.queue.rabbitmq_client import get_rabbitmq_connection
+
+if TYPE_CHECKING:
+    from aio_pika.abc import FieldValue
+
+
+def _create_watchdog_payload(file_path: str, market: str) -> dict[str, str]:
+    """Pure function to create the watchdog task payload."""
+    return {
+        "file_path": file_path,
+        "market": market,
+        "type": "file_upload",
+    }
+
+
+async def publish_watchdog_task(file_path: str, market: str) -> None:
+    """Publish a task to the bs.watchdog queue with optional compression."""
+    settings = get_settings()
+    connection = await get_rabbitmq_connection()
+    async with connection.channel() as channel:
+        queue = await channel.declare_queue("bs.watchdog", durable=True)
+
+        payload = _create_watchdog_payload(file_path, market)
+        body = json.dumps(payload).encode("utf-8")
+
+        headers: dict[str, FieldValue] = {}
+
+        if settings.enable_compression and len(body) > 1024:
+            body = gzip.compress(body)
+            headers["content-encoding"] = "gzip"
+
+        await channel.default_exchange.publish(
+            aio_pika.Message(
+                body=body,
+                headers=headers,
+                delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                content_type="application/json",
+            ),
+            routing_key=queue.name,
+        )
+        RABBITMQ_PUBLISHED.labels(queue="bs.watchdog").inc()
+
+
+async def publish_scraper_task(market: str, run_id: str) -> None:
+    """Publish a scraper trigger task to the bs.scrapers queue."""
+    connection = await get_rabbitmq_connection()
+    async with connection.channel() as channel:
+        queue = await channel.declare_queue("bs.scrapers", durable=True)
+
+        payload = {"market": market, "run_id": run_id, "type": "scrape_trigger"}
+        body = json.dumps(payload).encode("utf-8")
+
+        await channel.default_exchange.publish(
+            aio_pika.Message(
+                body=body,
+                delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                content_type="application/json",
+            ),
+            routing_key=queue.name,
+        )
+        RABBITMQ_PUBLISHED.labels(queue="bs.scrapers").inc()
