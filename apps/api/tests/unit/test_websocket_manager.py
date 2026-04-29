@@ -113,12 +113,9 @@ async def test_redis_pubsub_listener() -> None:
     await manager.connect(ws, "metrics") # type: ignore
     
     # We start the listener in the background
-    # Since manager is a singleton in the app, but here we might have a conflict
-    # Wait, the listener uses 'from src.websocket.manager import manager'
-    # I should patch the manager in the listener's module or use the singleton
-    from src.websocket import manager as manager_mod
-    original_manager = manager_mod.manager
-    manager_mod.manager = manager
+    from src.websocket import channels as channels_mod
+    original_manager = channels_mod.manager
+    channels_mod.manager = manager
     
     listener_task = asyncio.create_task(start_redis_pubsub_listener())
     
