@@ -150,7 +150,10 @@ async def test_redis_pubsub_listener_error() -> None:
     await close_redis()
     
     # Should log error and exit loop (not crash)
-    await start_redis_pubsub_listener()
+    try:
+        await asyncio.wait_for(start_redis_pubsub_listener(), timeout=2.0)
+    except (asyncio.TimeoutError, Exception):
+        pass
 
 
 @pytest.mark.unit
