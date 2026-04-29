@@ -103,3 +103,32 @@ def test_model_registry_lifecycle():
         registry.transition_model_stage(model_name, "1", "Staging")
     except Exception:
         pass
+
+@pytest.mark.unit
+def test_mlops_error_paths():
+    """Trigger catch blocks and edge cases for 100% coverage."""
+    # 1. Unknown method in Ray runner (Line 54)
+    from src.mlops.ray_runner import price_remote, RayExperimentRunner
+    local_func = price_remote.__dict__["_function"]
+    with pytest.raises(ValueError, match="Unknown method"):
+        local_func({}, "unknown_method")
+        
+    # 2. Init without address (Lines 86-87)
+    # Need to shutdown ray first to test init paths
+    if ray.is_initialized():
+        ray.shutdown()
+    runner = RayExperimentRunner("", "http://localhost:5000")
+    runner.connect()
+    assert ray.is_initialized()
+    
+    # 3. Model registry errors (Lines 23, 33 exception paths)
+    registry = ModelRegistry("http://invalid_uri:1234")
+    # This should log error but not crash (handled in try-except)
+    registry.register_model("invalid_run", "invalid_model")
+    registry.transition_model_stage("invalid_model", "1", "Production")
+    
+    # 4. MLflow tracker error (Lines 43-46)
+    from src.mlops.mlflow_tracker import MLflowTracker
+    tracker = MLflowTracker("http://invalid_uri:1234")
+    with pytest.raises(Exception):
+        tracker.log_pricing_run("exp", "run", {}, {})
