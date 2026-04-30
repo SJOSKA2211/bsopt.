@@ -29,8 +29,6 @@ class SpyScraper(BaseScraper):
             page = await browser.new_page()
             try:
                 await page.goto(target_url, wait_until="networkidle", timeout=30000)
-                # Wait for the options table to load
-                await page.wait_for_selector("table", timeout=15000)
 
                 # Extract rows (simplified logic for demonstration)
                 # In production, we would iterate through expiries and calls/puts

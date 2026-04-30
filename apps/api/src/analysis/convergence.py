@@ -31,6 +31,8 @@ def check_stability(prices: list[float], threshold: float = 0.01) -> bool:
     # Check if last 3 prices are within threshold of each other
     last_prices = prices[-3:]
     diffs = np.abs(np.diff(last_prices))
+
+
 def analyze_mc_convergence(
     params: Any, method_name: str, path_counts: list[int]
 ) -> list[dict[str, Any]]:

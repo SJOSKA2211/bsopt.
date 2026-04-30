@@ -57,12 +57,14 @@ def calculate_implied_volatility(
     return 0.2
 
 
-def calculate_error_metrics(
-    computed: Any, benchmark: Any
-) -> dict[str, float]:
+def calculate_error_metrics(computed: Any, benchmark: Any) -> dict[str, float]:
     """Calculate MAPE and other error metrics."""
     import numpy as np
+
     computed_arr = np.array(computed)
     benchmark_arr = np.array(benchmark)
     mape = np.mean(np.abs((computed_arr - benchmark_arr) / benchmark_arr)) * 100
-    return {"mape": float(mape), "absolute_error": float(np.mean(np.abs(computed_arr - benchmark_arr)))}
+    return {
+        "mape": float(mape),
+        "absolute_error": float(np.mean(np.abs(computed_arr - benchmark_arr))),
+    }

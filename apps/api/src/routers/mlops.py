@@ -26,6 +26,7 @@ async def get_mlops_status(
             ray.init(address=settings.ray_address, ignore_reinit_error=True)
 
         from typing import cast
+
         # Use getattr and cast to Any to bypass Mypy's disallow-untyped-calls for the Ray library
         cluster_resources_func = cast("Any", ray.cluster_resources)
         nodes_func = cast("Any", ray.nodes)

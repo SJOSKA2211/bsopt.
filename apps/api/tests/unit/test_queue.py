@@ -8,7 +8,6 @@ import asyncio
 import gzip
 from uuid import uuid4
 from typing import Any, cast
-from unittest.mock import MagicMock
 from src.queue.publisher import _create_watchdog_payload, publish_watchdog_task, publish_scraper_task
 from src.queue.rabbitmq_client import get_rabbitmq_channel, close_rabbitmq, get_rabbitmq_connection
 from src.queue.consumer import process_watchdog_task, start_consumers

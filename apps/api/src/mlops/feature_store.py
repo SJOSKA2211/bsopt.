@@ -1,6 +1,7 @@
 """Feature store for market data snapshots."""
 
 from datetime import date
+
 import numpy as np
 
 
@@ -23,6 +24,7 @@ class FeatureStore:
     ) -> None:
         """Persist a feature snapshot to the database."""
         import json
+
         from src.database.neon_client import acquire
 
         async with acquire() as conn:
@@ -41,6 +43,7 @@ class FeatureStore:
     async def get_snapshot(self, snapshot_date: date) -> dict[str, float] | None:
         """Retrieve a feature snapshot from the database."""
         import json
+
         from src.database.neon_client import acquire
 
         async with acquire() as conn:

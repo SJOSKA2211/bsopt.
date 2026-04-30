@@ -112,12 +112,13 @@ async def test_user(db_cleanup: Any) -> dict[str, str]:
     from uuid import uuid4
     
     user_id = uuid4()
+    email = f"test_{uuid4().hex[:8]}@example.com"
     async with acquire() as conn:
         await conn.execute(
             "INSERT INTO users (id, email, role) VALUES ($1, $2, $3)",
-            str(user_id), "test@example.com", "admin"
+            str(user_id), email, "admin"
         )
-    return {"id": str(user_id), "email": "test@example.com", "role": "admin"}
+    return {"id": str(user_id), "email": email, "role": "admin"}
 
 
 @pytest.fixture

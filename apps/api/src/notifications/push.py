@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from pywebpush import WebPushException, webpush
@@ -39,9 +39,7 @@ async def send_push_notification(n: Notification) -> bool:
 
     for sub_item in subscriptions:
         try:
-            subscription_info = (
-                json.loads(sub_item) if isinstance(sub_item, str) else sub_item
-            )
+            subscription_info = json.loads(sub_item) if isinstance(sub_item, str) else sub_item
             webpush(
                 subscription_info=subscription_info,
                 data=json.dumps(payload),
@@ -54,18 +52,24 @@ async def send_push_notification(n: Notification) -> bool:
         except Exception as exc:
             logger.error("push_exception", user_id=n.user_id, error=str(exc))
 
+
 async def send_web_push(subscription_info: Any, title: str, body: str) -> bool:
     """Utility to send a direct web push."""
     import os
+
     private_key = os.environ.get("VAPID_PRIVATE_KEY")
     if not private_key:
         return False
     try:
         webpush(
-            subscription_info=subscription_info if not isinstance(subscription_info, str) else json.loads(subscription_info),
+            subscription_info=(
+                subscription_info
+                if not isinstance(subscription_info, str)
+                else json.loads(subscription_info)
+            ),
             data=json.dumps({"title": title, "body": body}),
             vapid_private_key=private_key,
-            vapid_claims={"sub": "mailto:admin@example.com"}
+            vapid_claims={"sub": "mailto:admin@example.com"},
         )
         return True
     except Exception as exc:

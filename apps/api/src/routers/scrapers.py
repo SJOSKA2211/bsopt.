@@ -29,7 +29,11 @@ async def trigger_scraper(
     run_id = await save_scrape_run(market=market, scraper_class=f"{market.upper()}Scraper")
     await publish_scraper_task(market=market, run_id=run_id)
 
-    return {"status": "success", "message": f"Scraper task published for {market}", "run_id": run_id}
+    return {
+        "status": "success",
+        "message": f"Scraper task published for {market}",
+        "run_id": run_id,
+    }
 
 
 @router.get("/status")

@@ -100,7 +100,7 @@ class ConnectionManager:
         for dead in dead_connections:
             if user_id in self.user_connections and dead in self.user_connections[user_id]:
                 self.user_connections[user_id].remove(dead)
-        
+
         if user_id in self.user_connections and not self.user_connections[user_id]:
             del self.user_connections[user_id]
 

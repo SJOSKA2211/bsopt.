@@ -278,7 +278,7 @@ async def save_method_result(
 ) -> UUID:
     """Insert a method result and return its UUID."""
     import hashlib
-    
+
     param_str = json.dumps(parameter_set, sort_keys=True)
     param_hash = hashlib.sha256(param_str.encode()).hexdigest()
 
@@ -308,9 +308,7 @@ async def save_method_result(
 async def get_latest_metrics() -> list[dict[str, Any]]:
     """Fetch latest pricing metrics for the dashboard."""
     async with acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM method_results ORDER BY created_at DESC LIMIT 10"
-        )
+        rows = await conn.fetch("SELECT * FROM method_results ORDER BY created_at DESC LIMIT 10")
         return [dict(row) for row in rows]
 
 
@@ -378,7 +376,9 @@ async def get_unread_notifications(user_id: str | UUID) -> list[dict[str, Any]]:
 async def mark_notification_read(notification_id: UUID | str) -> None:
     """Mark a notification as read."""
     async with acquire() as conn:
-        await conn.execute("UPDATE notifications SET read = TRUE WHERE id = $1", str(notification_id))
+        await conn.execute(
+            "UPDATE notifications SET read = TRUE WHERE id = $1", str(notification_id)
+        )
 
 
 async def save_validation_metrics(
@@ -394,7 +394,7 @@ async def save_validation_metrics(
             """
             INSERT INTO validation_metrics (option_id, method_result_id, absolute_error, mape, market_deviation)
             VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (option_id, method_result_id) DO UPDATE 
+            ON CONFLICT (option_id, method_result_id) DO UPDATE
             SET absolute_error = EXCLUDED.absolute_error, mape = EXCLUDED.mape, market_deviation = EXCLUDED.market_deviation
             """,
             str(option_id),
@@ -430,7 +430,9 @@ async def save_scrape_error(
 async def get_recent_scrape_runs(limit: int = 10) -> list[dict[str, Any]]:
     """Fetch recent scrape runs."""
     async with acquire() as conn:
-        rows = await conn.fetch("SELECT * FROM scrape_runs ORDER BY started_at DESC LIMIT $1", limit)
+        rows = await conn.fetch(
+            "SELECT * FROM scrape_runs ORDER BY started_at DESC LIMIT $1", limit
+        )
         return [dict(row) for row in rows]
 
 
@@ -443,7 +445,7 @@ async def save_feature_snapshot(
             """
             INSERT INTO feature_snapshots (snapshot_date, features, option_count)
             VALUES ($1, $2, $3)
-            ON CONFLICT (snapshot_date) DO UPDATE 
+            ON CONFLICT (snapshot_date) DO UPDATE
             SET features = EXCLUDED.features, option_count = EXCLUDED.option_count
             """,
             snapshot_date,
@@ -455,7 +457,9 @@ async def save_feature_snapshot(
 async def get_latest_feature_snapshot() -> dict[str, Any] | None:
     """Fetch the latest feature snapshot."""
     async with acquire() as conn:
-        row = await conn.fetchrow("SELECT * FROM feature_snapshots ORDER BY snapshot_date DESC LIMIT 1")
+        row = await conn.fetchrow(
+            "SELECT * FROM feature_snapshots ORDER BY snapshot_date DESC LIMIT 1"
+        )
         return dict(row) if row else None
 
 

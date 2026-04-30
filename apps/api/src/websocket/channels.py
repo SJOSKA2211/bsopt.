@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from src.websocket.manager import manager as manager
+from src.websocket.manager import manager
 
 
 async def broadcast_metric_update(metric_data: dict[str, Any]) -> None:

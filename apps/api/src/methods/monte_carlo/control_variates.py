@@ -45,7 +45,7 @@ class ControlVariateMonteCarlo(BasePricer):
         # Control Variate: Terminal Spot Price
         # E[S_T] = S_0 * exp(r*T)
         expected_terminal_spot = underlying_price * np.exp(risk_free_rate * time_to_expiry)
-        
+
         # We'll use the covariance between payoff and spot price to find optimal beta
         cov_matrix = np.cov(payoff_standard, terminal_prices)
         beta_coefficient = cov_matrix[0, 1] / cov_matrix[1, 1] if cov_matrix[1, 1] > 0 else 0
