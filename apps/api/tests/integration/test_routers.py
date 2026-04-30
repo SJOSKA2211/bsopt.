@@ -68,6 +68,8 @@ async def test_notifications_endpoints(async_client: AsyncClient, auth_headers: 
 async def test_scrapers_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     # Trigger (Admin only)
     response = await async_client.post("/api/v1/scrapers/trigger?market=spy", headers=auth_headers)
+    if response.status_code != 200:
+        print(f"DEBUG: Scrapers fail: {response.status_code} - {response.text}")
     assert response.status_code == 200
     assert response.json()["status"] == "success"
 

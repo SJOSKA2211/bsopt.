@@ -24,7 +24,9 @@ class BaseScraper(ABC):
     async def get_page_content(self, url: str) -> str:  # pragma: no cover
         """Helper to fetch page content using headless Chromium."""
         async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=True)
+            browser = await playwright.chromium.launch(
+                headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"]
+            )
             page = await browser.new_page()
             try:
                 await page.goto(url, wait_until="networkidle", timeout=30000)

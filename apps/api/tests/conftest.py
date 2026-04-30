@@ -48,27 +48,20 @@ def anyio_backend() -> str:
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def db_lifecycle():
-    """Ensure all infrastructure clients are closed after each test."""
-    yield
+async def reset_globals():
+    """Reset all global connection managers before each test to prevent loop leakage."""
     from src.database.neon_client import close_pool
     from src.cache.redis_client import close_redis
     from src.queue.rabbitmq_client import close_rabbitmq
     
-    try:
-        await close_pool()
-    except Exception:
-        pass
-        
-    try:
-        await close_redis()
-    except Exception:
-        pass
-        
-    try:
-        await close_rabbitmq()
-    except Exception:
-        pass
+    await close_pool()
+    await close_redis()
+    await close_rabbitmq()
+    yield
+    # Optional: cleanup after as well
+    await close_pool()
+    await close_redis()
+    await close_rabbitmq()
 
 
 @pytest_asyncio.fixture
@@ -106,7 +99,7 @@ async def db_cleanup() -> AsyncGenerator[None, None]:
 
 
 @pytest_asyncio.fixture
-async def test_user(db_cleanup: Any) -> dict[str, str]:
+async def test_user(db_cleanup: Any) -> dict[str, Any]:
     """Create a real test user in the DB and return their record."""
     from src.database.neon_client import acquire
     from uuid import uuid4
@@ -122,6 +115,6 @@ async def test_user(db_cleanup: Any) -> dict[str, str]:
 
 
 @pytest.fixture
-def auth_headers(test_user: dict[str, str]) -> dict[str, str]:
+def auth_headers(test_user: dict[str, Any]) -> dict[str, str]:
     """Return authorization headers for the test user."""
     return {"Authorization": f"Bearer {test_user['id']}"}

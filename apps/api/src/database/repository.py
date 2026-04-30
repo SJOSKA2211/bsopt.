@@ -275,7 +275,7 @@ async def save_method_result(
     exec_seconds: float,
     converged: bool = True,
     mlflow_run_id: str | None = None,
-) -> UUID:
+) -> str:
     """Insert a method result and return its UUID."""
     import hashlib
 
@@ -345,7 +345,7 @@ async def get_latest_model(name: str) -> dict[str, Any]:
 
 async def save_notification(
     user_id: str | UUID, title: str, body: str, severity: str = "info"
-) -> UUID:
+) -> str:
     """Save a notification to the database."""
     async with acquire() as conn:
         row = await conn.fetchrow(
@@ -371,14 +371,6 @@ async def get_unread_notifications(user_id: str | UUID) -> list[dict[str, Any]]:
             str(user_id),
         )
         return [dict(row) for row in rows]
-
-
-async def mark_notification_read(notification_id: UUID | str) -> None:
-    """Mark a notification as read."""
-    async with acquire() as conn:
-        await conn.execute(
-            "UPDATE notifications SET read = TRUE WHERE id = $1", str(notification_id)
-        )
 
 
 async def save_validation_metrics(

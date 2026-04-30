@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 
@@ -31,6 +33,7 @@ def check_stability(prices: list[float], threshold: float = 0.01) -> bool:
     # Check if last 3 prices are within threshold of each other
     last_prices = prices[-3:]
     diffs = np.abs(np.diff(last_prices))
+    return bool(np.all(diffs < threshold))
 
 
 def analyze_mc_convergence(

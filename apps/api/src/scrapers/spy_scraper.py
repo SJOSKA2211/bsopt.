@@ -25,7 +25,9 @@ class SpyScraper(BaseScraper):
         logger.info("scraping_started", market=self.market, url=target_url)
 
         async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(headless=True)
+            browser = await playwright.chromium.launch(
+                headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"]
+            )
             page = await browser.new_page()
             try:
                 await page.goto(target_url, wait_until="networkidle", timeout=30000)

@@ -1,0 +1,1004 @@
+Bytecode compiled 12566 files in 1.03s
+============================= test session starts ==============================
+platform linux -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- /home/kamau/bsopt./apps/api/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/kamau/bsopt./apps/api
+configfile: pyproject.toml
+plugins: anyio-4.13.0, asyncio-1.3.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 91 items
+
+tests/unit/test_cache.py::test_cache_key_generation_consistency PASSED   [  1%]
+tests/unit/test_cache.py::test_cache_key_sorts_kwargs PASSED             [  2%]
+tests/unit/test_cache.py::test_cache_key_different_prefixes PASSED       [  3%]
+tests/unit/test_cache.py::test_cache_key_handles_empty_args PASSED       [  4%]
+tests/unit/test_cache.py::test_redis_set_get_cache PASSED                [  5%]
+tests/unit/test_cache.py::test_redis_compression FAILED                  [  6%]
+tests/unit/test_cache.py::test_redis_serialization_pydantic PASSED       [  7%]
+tests/unit/test_cache.py::test_redis_serialization_nested FAILED         [  8%]
+tests/unit/test_cache.py::test_get_cache_miss PASSED                     [  9%]
+tests/unit/test_cache.py::test_close_redis PASSED                        [ 10%]
+tests/unit/test_methods.py::test_option_params_validation PASSED         [ 12%]
+tests/unit/test_methods.py::test_analytical_call PASSED                  [ 13%]
+tests/unit/test_methods.py::test_analytical_put PASSED                   [ 14%]
+tests/unit/test_methods.py::test_explicit_fdm_cfl_violation PASSED       [ 15%]
+tests/unit/test_methods.py::test_explicit_fdm_put PASSED                 [ 16%]
+tests/unit/test_methods.py::test_implicit_fdm_put PASSED                 [ 17%]
+tests/unit/test_methods.py::test_crank_nicolson_put PASSED               [ 18%]
+tests/unit/test_methods.py::test_standard_mc_confidence PASSED           [ 19%]
+tests/unit/test_methods.py::test_antithetic_mc_odd_paths PASSED          [ 20%]
+tests/unit/test_methods.py::test_antithetic_mc_put PASSED                [ 21%]
+tests/unit/test_methods.py::test_binomial_crr_american PASSED            [ 23%]
+tests/unit/test_methods.py::test_trinomial_put PASSED                    [ 24%]
+tests/unit/test_methods.py::test_all_methods_agreement[BlackScholesAnalytical] PASSED [ 25%]
+tests/unit/test_methods.py::test_all_methods_agreement[ExplicitFDM] PASSED [ 26%]
+tests/unit/test_methods.py::test_all_methods_agreement[ImplicitFDM] PASSED [ 27%]
+tests/unit/test_methods.py::test_all_methods_agreement[CrankNicolsonFDM] PASSED [ 28%]
+tests/unit/test_methods.py::test_all_methods_agreement[StandardMonteCarlo] PASSED [ 29%]
+tests/unit/test_methods.py::test_all_methods_agreement[AntitheticMonteCarlo] PASSED [ 30%]
+tests/unit/test_methods.py::test_all_methods_agreement[ControlVariateMonteCarlo] PASSED [ 31%]
+tests/unit/test_methods.py::test_all_methods_agreement[QuasiMonteCarlo] PASSED [ 32%]
+tests/unit/test_methods.py::test_all_methods_agreement[BinomialCRR] PASSED [ 34%]
+tests/unit/test_methods.py::test_all_methods_agreement[TrinomialTree] PASSED [ 35%]
+tests/unit/test_methods.py::test_all_methods_agreement[RichardsonExtrapolation] PASSED [ 36%]
+tests/unit/test_methods.py::test_all_methods_agreement[TrinomialRichardsonExtrapolation] PASSED [ 37%]
+tests/unit/test_methods.py::test_analytical_geometric_asian PASSED       [ 38%]
+tests/unit/test_methods.py::test_control_variate_mc_convergence PASSED   [ 39%]
+tests/unit/test_methods.py::test_quasi_mc_sobol_paths PASSED             [ 40%]
+tests/unit/test_mlops.py::test_mlflow_tracker_logging PASSED             [ 41%]
+tests/unit/test_mlops.py::test_feature_store_logic PASSED                [ 42%]
+tests/unit/test_mlops.py::test_ray_runner_local PASSED                   [ 43%]
+tests/unit/test_mlops.py::test_drift_detection PASSED                    [ 45%]
+tests/unit/test_mlops.py::test_model_registry_lifecycle PASSED           [ 46%]
+tests/unit/test_mlops.py::test_auth_dependencies PASSED                  [ 47%]
+tests/unit/test_mlops.py::test_repository_exhaustive ERROR               [ 48%]
+tests/unit/test_mlops.py::test_routers_exhaustive PASSED                 [ 49%]
+tests/unit/test_mlops.py::test_notifications_exhaustive FAILED           [ 50%]
+tests/unit/test_mlops.py::test_nse_next_scraper PASSED                   [ 51%]
+tests/unit/test_mlops.py::test_manager_exhaustive PASSED                 [ 52%]
+tests/unit/test_queue.py::test_watchdog_payload_structure PASSED         [ 53%]
+tests/unit/test_queue.py::test_publish_and_consume_watchdog_task ERROR   [ 54%]
+tests/unit/test_queue.py::test_publish_watchdog_task_compressed ERROR    [ 56%]
+tests/unit/test_queue.py::test_publish_scraper_task ERROR                [ 57%]
+tests/unit/test_queue.py::test_process_watchdog_task_logic ERROR         [ 58%]
+tests/unit/test_queue.py::test_process_watchdog_task_empty_payload ERROR [ 59%]
+tests/unit/test_queue.py::test_process_watchdog_task_invalid_json ERROR  [ 60%]
+tests/unit/test_queue.py::test_start_consumers PASSED                    [ 61%]
+tests/unit/test_queue.py::test_close_rabbitmq FAILED                     [ 62%]
+tests/unit/test_queue.py::test_rabbitmq_reconnect_when_closed FAILED     [ 63%]
+tests/unit/test_storage.py::test_object_name_construction PASSED         [ 64%]
+tests/unit/test_storage.py::test_object_name_trimming PASSED             [ 65%]
+tests/unit/test_storage.py::test_storage_upload_and_presigned_url PASSED [ 67%]
+tests/unit/test_storage.py::test_storage_compression PASSED              [ 68%]
+tests/unit/test_storage.py::test_storage_compression_already_gz PASSED   [ 69%]
+tests/unit/test_storage.py::test_minio_client_endpoint_protocol PASSED   [ 70%]
+tests/unit/test_validators.py::test_option_parameter_validation_success PASSED [ 71%]
+tests/unit/test_validators.py::test_option_parameter_validation_missing_fields PASSED [ 72%]
+tests/unit/test_validators.py::test_option_parameter_validation_invalid_values PASSED [ 73%]
+tests/unit/test_validators.py::test_option_parameter_multi_error_collection PASSED [ 74%]
+tests/unit/test_validators.py::test_market_data_validation PASSED        [ 75%]
+tests/unit/test_validators.py::test_option_parameter_validation_exercise_type PASSED [ 76%]
+tests/unit/test_validators.py::test_option_parameter_validation_market_source PASSED [ 78%]
+tests/unit/test_validators.py::test_market_data_validation_missing_fields PASSED [ 79%]
+tests/unit/test_validators.py::test_market_data_validation_invalid_values PASSED [ 80%]
+tests/unit/test_validators.py::test_option_parameter_validation_extremely_large_values PASSED [ 81%]
+tests/unit/test_validators.py::test_option_parameter_validation_zero_volatility PASSED [ 82%]
+tests/unit/test_validators.py::test_market_data_validation_negative_bid PASSED [ 83%]
+tests/unit/test_validators.py::test_market_data_validation_zero_ask PASSED [ 84%]
+tests/unit/test_watchdog_handler.py::test_detect_market_prefixes PASSED  [ 85%]
+tests/unit/test_watchdog_handler.py::test_handler_ignores_directories PASSED [ 86%]
+tests/unit/test_watchdog_handler.py::test_handler_ignores_unsupported_extensions PASSED [ 87%]
+tests/unit/test_watchdog_handler.py::test_watchdog_observer_starts PASSED [ 89%]
+tests/unit/test_watchdog_handler.py::test_handler_valid_file ERROR       [ 90%]
+tests/unit/test_watchdog_handler.py::test_handler_case_insensitivity PASSED [ 91%]
+tests/unit/test_watchdog_handler.py::test_handler_supports_gz_files PASSED [ 92%]
+tests/unit/test_websocket_manager.py::test_manager_connect_disconnect_with_user PASSED [ 93%]
+tests/unit/test_websocket_manager.py::test_manager_invalid_channel PASSED [ 94%]
+tests/unit/test_websocket_manager.py::test_manager_broadcast_and_cleanup PASSED [ 95%]
+tests/unit/test_websocket_manager.py::test_manager_send_personal_message PASSED [ 96%]
+tests/unit/test_websocket_manager.py::test_channel_broadcast_helpers PASSED [ 97%]
+tests/unit/test_websocket_manager.py::test_redis_pubsub_listener_exhaustive PASSED [ 98%]
+tests/unit/test_websocket_manager.py::test_redis_pubsub_listener_error_path PASSED [100%]
+ERROR: Coverage failure: total of 74 is less than fail-under=100
+
+
+==================================== ERRORS ====================================
+_________________ ERROR at setup of test_repository_exhaustive _________________
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:247: in release
+    self._con.terminate()
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:1524: in terminate
+    self._abort()
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:1576: in _abort
+    self._protocol.abort()
+asyncpg/protocol/protocol.pyx:599: in asyncpg.protocol.protocol.BaseProtocol.abort
+    ???
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/selector_events.py:830: in abort
+    self._force_close(None)
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/selector_events.py:902: in _force_close
+    self._loop.call_soon(self._call_connection_lost, exc)
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:827: in call_soon
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+
+During handling of the above exception, another exception occurred:
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:81: in db_cleanup
+    async with acquire() as conn:
+               ^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/contextlib.py:221: in __aexit__
+    await anext(self.gen)
+src/database/neon_client.py:54: in acquire
+    async with pool.acquire() as conn:
+               ^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:1068: in __aexit__
+    await self.pool.release(con)
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:937: in release
+    return await asyncio.shield(ch.release(timeout))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:249: in release
+    raise ex
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:239: in release
+    await self._con.reset(timeout=budget)
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:1571: in reset
+    await self.execute(reset_query)
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:354: in execute
+    result = await self._protocol.query(query, timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+asyncpg/protocol/protocol.pyx:354: in query
+    ???
+asyncpg/protocol/protocol.pyx:735: in asyncpg.protocol.protocol.BaseProtocol._check_state
+    ???
+E   asyncpg.exceptions._base.InterfaceError: cannot perform operation: another operation is in progress
+---------------------------- Captured stdout setup -----------------------------
+Future exception was never retrieved
+future: <Future finished exception=ConnectionDoesNotExistError('connection was closed in the middle of operation')>
+asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the middle of operation
+{"error_type": "InterfaceError", "error_message": "cannot perform operation: another operation is in progress", "component": "neon_client", "severity": "error", "context": {}, "event": "neondb_acquire_failed", "level": "error", "timestamp": "2026-04-30T11:21:27.407137Z"}
+------------------------------ Captured log setup ------------------------------
+ERROR    asyncio:base_events.py:1886 Future exception was never retrieved
+future: <Future finished exception=ConnectionDoesNotExistError('connection was closed in the middle of operation')>
+asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the middle of operation
+___________ ERROR at setup of test_publish_and_consume_watchdog_task ___________
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:81: in db_cleanup
+    async with acquire() as conn:
+               ^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/contextlib.py:214: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+src/database/neon_client.py:54: in acquire
+    async with pool.acquire() as conn:
+               ^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:1056: in __aenter__
+    self.connection = await self.pool._acquire(self.timeout)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:896: in _acquire
+    return await _acquire_impl()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:881: in _acquire_impl
+    proxy = await ch.acquire()  # type: PoolConnectionProxy
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:161: in acquire
+    await self.connect()
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:153: in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:538: in _get_new_connection
+    con = await self._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:2443: in connect
+    return await connect_utils._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1218: in _connect
+    conn = await _connect_addr(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1054: in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1099: in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:969: in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1119: in create_connection
+    infos = await self._ensure_resolved(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1516: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:936: in getaddrinfo
+    return await self.run_in_executor(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:885: in run_in_executor
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+---------------------------- Captured stdout setup -----------------------------
+{"error_type": "RuntimeError", "error_message": "Event loop is closed", "component": "neon_client", "severity": "error", "context": {}, "event": "neondb_acquire_failed", "level": "error", "timestamp": "2026-04-30T11:21:27.723607Z"}
+___________ ERROR at setup of test_publish_watchdog_task_compressed ____________
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:81: in db_cleanup
+    async with acquire() as conn:
+               ^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/contextlib.py:214: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+src/database/neon_client.py:54: in acquire
+    async with pool.acquire() as conn:
+               ^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:1056: in __aenter__
+    self.connection = await self.pool._acquire(self.timeout)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:896: in _acquire
+    return await _acquire_impl()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:881: in _acquire_impl
+    proxy = await ch.acquire()  # type: PoolConnectionProxy
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:161: in acquire
+    await self.connect()
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:153: in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:538: in _get_new_connection
+    con = await self._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:2443: in connect
+    return await connect_utils._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1218: in _connect
+    conn = await _connect_addr(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1054: in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1099: in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:969: in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1119: in create_connection
+    infos = await self._ensure_resolved(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1516: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:936: in getaddrinfo
+    return await self.run_in_executor(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:885: in run_in_executor
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+---------------------------- Captured stdout setup -----------------------------
+{"error_type": "RuntimeError", "error_message": "Event loop is closed", "component": "neon_client", "severity": "error", "context": {}, "event": "neondb_acquire_failed", "level": "error", "timestamp": "2026-04-30T11:21:27.966876Z"}
+_________________ ERROR at setup of test_publish_scraper_task __________________
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:81: in db_cleanup
+    async with acquire() as conn:
+               ^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/contextlib.py:214: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+src/database/neon_client.py:54: in acquire
+    async with pool.acquire() as conn:
+               ^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:1056: in __aenter__
+    self.connection = await self.pool._acquire(self.timeout)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:896: in _acquire
+    return await _acquire_impl()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:881: in _acquire_impl
+    proxy = await ch.acquire()  # type: PoolConnectionProxy
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:161: in acquire
+    await self.connect()
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:153: in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:538: in _get_new_connection
+    con = await self._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:2443: in connect
+    return await connect_utils._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1218: in _connect
+    conn = await _connect_addr(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1054: in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1099: in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:969: in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1119: in create_connection
+    infos = await self._ensure_resolved(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1516: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:936: in getaddrinfo
+    return await self.run_in_executor(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:885: in run_in_executor
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+---------------------------- Captured stdout setup -----------------------------
+{"error_type": "RuntimeError", "error_message": "Event loop is closed", "component": "neon_client", "severity": "error", "context": {}, "event": "neondb_acquire_failed", "level": "error", "timestamp": "2026-04-30T11:21:28.216143Z"}
+______________ ERROR at setup of test_process_watchdog_task_logic ______________
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:81: in db_cleanup
+    async with acquire() as conn:
+               ^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/contextlib.py:214: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+src/database/neon_client.py:54: in acquire
+    async with pool.acquire() as conn:
+               ^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:1056: in __aenter__
+    self.connection = await self.pool._acquire(self.timeout)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:896: in _acquire
+    return await _acquire_impl()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:881: in _acquire_impl
+    proxy = await ch.acquire()  # type: PoolConnectionProxy
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:161: in acquire
+    await self.connect()
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:153: in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:538: in _get_new_connection
+    con = await self._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:2443: in connect
+    return await connect_utils._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1218: in _connect
+    conn = await _connect_addr(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1054: in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1099: in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:969: in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1119: in create_connection
+    infos = await self._ensure_resolved(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1516: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:936: in getaddrinfo
+    return await self.run_in_executor(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:885: in run_in_executor
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+---------------------------- Captured stdout setup -----------------------------
+{"error_type": "RuntimeError", "error_message": "Event loop is closed", "component": "neon_client", "severity": "error", "context": {}, "event": "neondb_acquire_failed", "level": "error", "timestamp": "2026-04-30T11:21:28.459585Z"}
+__________ ERROR at setup of test_process_watchdog_task_empty_payload __________
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:81: in db_cleanup
+    async with acquire() as conn:
+               ^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/contextlib.py:214: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+src/database/neon_client.py:54: in acquire
+    async with pool.acquire() as conn:
+               ^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:1056: in __aenter__
+    self.connection = await self.pool._acquire(self.timeout)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:896: in _acquire
+    return await _acquire_impl()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:881: in _acquire_impl
+    proxy = await ch.acquire()  # type: PoolConnectionProxy
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:161: in acquire
+    await self.connect()
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:153: in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:538: in _get_new_connection
+    con = await self._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:2443: in connect
+    return await connect_utils._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1218: in _connect
+    conn = await _connect_addr(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1054: in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1099: in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:969: in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1119: in create_connection
+    infos = await self._ensure_resolved(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1516: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:936: in getaddrinfo
+    return await self.run_in_executor(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:885: in run_in_executor
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+---------------------------- Captured stdout setup -----------------------------
+{"error_type": "RuntimeError", "error_message": "Event loop is closed", "component": "neon_client", "severity": "error", "context": {}, "event": "neondb_acquire_failed", "level": "error", "timestamp": "2026-04-30T11:21:28.706401Z"}
+__________ ERROR at setup of test_process_watchdog_task_invalid_json ___________
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:81: in db_cleanup
+    async with acquire() as conn:
+               ^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/contextlib.py:214: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+src/database/neon_client.py:54: in acquire
+    async with pool.acquire() as conn:
+               ^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:1056: in __aenter__
+    self.connection = await self.pool._acquire(self.timeout)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:896: in _acquire
+    return await _acquire_impl()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:881: in _acquire_impl
+    proxy = await ch.acquire()  # type: PoolConnectionProxy
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:161: in acquire
+    await self.connect()
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:153: in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:538: in _get_new_connection
+    con = await self._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:2443: in connect
+    return await connect_utils._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1218: in _connect
+    conn = await _connect_addr(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1054: in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1099: in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:969: in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1119: in create_connection
+    infos = await self._ensure_resolved(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1516: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:936: in getaddrinfo
+    return await self.run_in_executor(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:885: in run_in_executor
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+---------------------------- Captured stdout setup -----------------------------
+{"error_type": "RuntimeError", "error_message": "Event loop is closed", "component": "neon_client", "severity": "error", "context": {}, "event": "neondb_acquire_failed", "level": "error", "timestamp": "2026-04-30T11:21:28.950415Z"}
+__________________ ERROR at setup of test_handler_valid_file ___________________
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:743: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:313: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py:127: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:719: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:309: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:81: in db_cleanup
+    async with acquire() as conn:
+               ^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/contextlib.py:214: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+src/database/neon_client.py:54: in acquire
+    async with pool.acquire() as conn:
+               ^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:1056: in __aenter__
+    self.connection = await self.pool._acquire(self.timeout)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:896: in _acquire
+    return await _acquire_impl()
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:881: in _acquire_impl
+    proxy = await ch.acquire()  # type: PoolConnectionProxy
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:161: in acquire
+    await self.connect()
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:153: in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/pool.py:538: in _get_new_connection
+    con = await self._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connection.py:2443: in connect
+    return await connect_utils._connect(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1218: in _connect
+    conn = await _connect_addr(
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1054: in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:1099: in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/asyncpg/connect_utils.py:969: in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1119: in create_connection
+    infos = await self._ensure_resolved(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:1516: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:936: in getaddrinfo
+    return await self.run_in_executor(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:885: in run_in_executor
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+---------------------------- Captured stdout setup -----------------------------
+{"error_type": "RuntimeError", "error_message": "Event loop is closed", "component": "neon_client", "severity": "error", "context": {}, "event": "neondb_acquire_failed", "level": "error", "timestamp": "2026-04-30T11:21:30.138344Z"}
+=================================== FAILURES ===================================
+____________________________ test_redis_compression ____________________________
+.venv/lib/python3.14/site-packages/redis/asyncio/connection.py:734: in read_response
+    response = await self._parser.read_response(
+.venv/lib/python3.14/site-packages/redis/_parsers/resp2.py:82: in read_response
+    response = await self._read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/_parsers/resp2.py:90: in _read_response
+    raw = await self._readline()
+          ^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/_parsers/base.py:559: in _readline
+    data = await self._stream.readline()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:562: in readline
+    line = await self.readuntil(sep)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:677: in readuntil
+    await self._wait_for_data('readuntil')
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:539: in _wait_for_data
+    await self._waiter
+E   RuntimeError: Task <Task pending name='Task-5' coro=<test_redis_compression() running at /home/kamau/bsopt./apps/api/tests/unit/test_cache.py:84> cb=[_run_until_complete_cb() at /home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:181]> got Future <Future pending> attached to a different loop
+
+During handling of the above exception, another exception occurred:
+tests/unit/test_cache.py:84: in test_redis_compression
+    await set_cache(key, large_value)
+src/cache/redis_client.py:69: in set_cache
+    await client.set(key, data, ex=ttl)
+.venv/lib/python3.14/site-packages/redis/asyncio/client.py:781: in execute_command
+    result = await conn.retry.call_with_retry(
+.venv/lib/python3.14/site-packages/redis/asyncio/retry.py:69: in call_with_retry
+    return await do()
+           ^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/asyncio/client.py:722: in _send_command_parse_response
+    return await self.parse_response(conn, command_name, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/asyncio/client.py:823: in parse_response
+    response = await connection.read_response()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/asyncio/connection.py:754: in read_response
+    await self.disconnect(nowait=True)
+.venv/lib/python3.14/site-packages/redis/asyncio/connection.py:585: in disconnect
+    self._writer.close()  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:352: in close
+    return self._transport.close()
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/selector_events.py:1216: in close
+    super().close()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/selector_events.py:869: in close
+    self._loop.call_soon(self._call_connection_lost, None)
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:827: in call_soon
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+_______________________ test_redis_serialization_nested ________________________
+.venv/lib/python3.14/site-packages/redis/asyncio/connection.py:734: in read_response
+    response = await self._parser.read_response(
+.venv/lib/python3.14/site-packages/redis/_parsers/resp2.py:82: in read_response
+    response = await self._read_response(disable_decoding=disable_decoding)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/_parsers/resp2.py:90: in _read_response
+    raw = await self._readline()
+          ^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/_parsers/base.py:559: in _readline
+    data = await self._stream.readline()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:562: in readline
+    line = await self.readuntil(sep)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:677: in readuntil
+    await self._wait_for_data('readuntil')
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:539: in _wait_for_data
+    await self._waiter
+E   RuntimeError: Task <Task pending name='Task-11' coro=<test_redis_serialization_nested() running at /home/kamau/bsopt./apps/api/tests/unit/test_cache.py:117> cb=[_run_until_complete_cb() at /home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:181]> got Future <Future pending> attached to a different loop
+
+During handling of the above exception, another exception occurred:
+tests/unit/test_cache.py:117: in test_redis_serialization_nested
+    await set_cache(key, value)
+src/cache/redis_client.py:69: in set_cache
+    await client.set(key, data, ex=ttl)
+.venv/lib/python3.14/site-packages/redis/asyncio/client.py:781: in execute_command
+    result = await conn.retry.call_with_retry(
+.venv/lib/python3.14/site-packages/redis/asyncio/retry.py:69: in call_with_retry
+    return await do()
+           ^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/asyncio/client.py:722: in _send_command_parse_response
+    return await self.parse_response(conn, command_name, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/asyncio/client.py:823: in parse_response
+    response = await connection.read_response()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/redis/asyncio/connection.py:754: in read_response
+    await self.disconnect(nowait=True)
+.venv/lib/python3.14/site-packages/redis/asyncio/connection.py:585: in disconnect
+    self._writer.close()  # type: ignore[union-attr]
+    ^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/streams.py:352: in close
+    return self._transport.close()
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/selector_events.py:1216: in close
+    super().close()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/selector_events.py:869: in close
+    self._loop.call_soon(self._call_connection_lost, None)
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:827: in call_soon
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+________________________ test_notifications_exhaustive _________________________
+tests/unit/test_mlops.py:147: in test_notifications_exhaustive
+    await router.route_notification("user1", "T", "B", "info")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NotificationRouter' object has no attribute 'route_notification'
+_____________________________ test_close_rabbitmq ______________________________
+tests/unit/test_queue.py:193: in test_close_rabbitmq
+    await get_rabbitmq_channel()
+src/queue/rabbitmq_client.py:33: in get_rabbitmq_channel
+    RabbitMQManager._channel = await conn.channel()
+                               ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/aio_pika/channel.py:57: in __await__
+    yield from self.initialize().__await__()
+.venv/lib/python3.14/site-packages/aio_pika/channel.py:207: in initialize
+    await self._open()
+.venv/lib/python3.14/site-packages/aio_pika/channel.py:183: in _open
+    channel = await UnderlayChannel.create(
+.venv/lib/python3.14/site-packages/aio_pika/abc.py:523: in create
+    connection.closing.add_done_callback(close_callback)
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:827: in call_soon
+    self._check_closed()
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py:550: in _check_closed
+    raise RuntimeError('Event loop is closed')
+E   RuntimeError: Event loop is closed
+_____________________ test_rabbitmq_reconnect_when_closed ______________________
+tests/unit/test_queue.py:207: in test_rabbitmq_reconnect_when_closed
+    await conn.close()
+.venv/lib/python3.14/site-packages/aio_pika/robust_connection.py:252: in close
+    await asyncio.gather(
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/tasks.py:876: in gather
+    fut = ensure_future(arg, loop=loop)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/tasks.py:714: in ensure_future
+    raise ValueError('The future belongs to a different loop than '
+E   ValueError: The future belongs to a different loop than the one specified as the loop argument
+=============================== warnings summary ===============================
+tests/unit/test_mlops.py::test_model_registry_lifecycle
+  /home/kamau/bsopt./apps/api/src/mlops/model_registry.py:29: FutureWarning: ``mlflow.tracking.client.MlflowClient.transition_model_version_stage`` is deprecated since 2.9.0. Model registry stages will be removed in a future major release. To learn more about the deprecation of model registry stages, see our migration guide here: https://mlflow.org/docs/latest/model-registry.html#migrating-from-stages
+    client.transition_model_version_stage(name=model_name, version=version, stage=stage)
+
+tests/unit/test_storage.py::test_minio_client_endpoint_protocol
+  /home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/_pytest/python.py:166: RuntimeWarning: coroutine 'AioSession._create_client' was never awaited
+    result = testfunction(**testargs)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_watchdog_handler.py::test_handler_case_insensitivity
+  /home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-19 (on_created)
+  
+  Traceback (most recent call last):
+    File "/home/kamau/bsopt./apps/api/src/data/watchdog_handler.py", line 47, in on_created
+      loop = asyncio.get_running_loop()
+  RuntimeError: no running event loop
+  
+  During handling of the above exception, another exception occurred:
+  
+  Traceback (most recent call last):
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1082, in _bootstrap_inner
+      self._context.run(self.run)
+      ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1024, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/home/kamau/bsopt./apps/api/src/data/watchdog_handler.py", line 52, in on_created
+      asyncio.run(publish_watchdog_task(file_path=str(path), market=market))
+      ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py", line 204, in run
+      return runner.run(main)
+             ~~~~~~~~~~^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py", line 127, in run
+      return self._loop.run_until_complete(task)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 719, in run_until_complete
+      return future.result()
+             ~~~~~~~~~~~~~^^
+    File "/home/kamau/bsopt./apps/api/src/queue/publisher.py", line 34, in publish_watchdog_task
+      await _publish("bs.watchdog", payload)
+    File "/home/kamau/bsopt./apps/api/src/queue/publisher.py", line 48, in _publish
+      async with connection.channel() as channel:
+                 ~~~~~~~~~~~~~~~~~~^^
+    File "/home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/aio_pika/channel.py", line 45, in __aenter__
+      await self.initialize()
+    File "/home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/aio_pika/channel.py", line 207, in initialize
+      await self._open()
+    File "/home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/aio_pika/channel.py", line 183, in _open
+      channel = await UnderlayChannel.create(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      ...<5 lines>...
+      )
+      ^
+    File "/home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/aio_pika/abc.py", line 523, in create
+      connection.closing.add_done_callback(close_callback)
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 827, in call_soon
+      self._check_closed()
+      ~~~~~~~~~~~~~~~~~~^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 550, in _check_closed
+      raise RuntimeError('Event loop is closed')
+  RuntimeError: Event loop is closed
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/unit/test_watchdog_handler.py::test_handler_supports_gz_files
+  /home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/_pytest/threadexception.py:58: PytestUnhandledThreadExceptionWarning: Exception in thread Thread-20 (on_created)
+  
+  Traceback (most recent call last):
+    File "/home/kamau/bsopt./apps/api/src/data/watchdog_handler.py", line 47, in on_created
+      loop = asyncio.get_running_loop()
+  RuntimeError: no running event loop
+  
+  During handling of the above exception, another exception occurred:
+  
+  Traceback (most recent call last):
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1082, in _bootstrap_inner
+      self._context.run(self.run)
+      ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/threading.py", line 1024, in run
+      self._target(*self._args, **self._kwargs)
+      ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/home/kamau/bsopt./apps/api/src/data/watchdog_handler.py", line 52, in on_created
+      asyncio.run(publish_watchdog_task(file_path=str(path), market=market))
+      ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py", line 204, in run
+      return runner.run(main)
+             ~~~~~~~~~~^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/runners.py", line 127, in run
+      return self._loop.run_until_complete(task)
+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 719, in run_until_complete
+      return future.result()
+             ~~~~~~~~~~~~~^^
+    File "/home/kamau/bsopt./apps/api/src/queue/publisher.py", line 34, in publish_watchdog_task
+      await _publish("bs.watchdog", payload)
+    File "/home/kamau/bsopt./apps/api/src/queue/publisher.py", line 48, in _publish
+      async with connection.channel() as channel:
+                 ~~~~~~~~~~~~~~~~~~^^
+    File "/home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/aio_pika/channel.py", line 45, in __aenter__
+      await self.initialize()
+    File "/home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/aio_pika/channel.py", line 207, in initialize
+      await self._open()
+    File "/home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/aio_pika/channel.py", line 183, in _open
+      channel = await UnderlayChannel.create(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      ...<5 lines>...
+      )
+      ^
+    File "/home/kamau/bsopt./apps/api/.venv/lib/python3.14/site-packages/aio_pika/abc.py", line 523, in create
+      connection.closing.add_done_callback(close_callback)
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 827, in call_soon
+      self._check_closed()
+      ~~~~~~~~~~~~~~~~~~^^
+    File "/home/kamau/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/asyncio/base_events.py", line 550, in _check_closed
+      raise RuntimeError('Event loop is closed')
+  RuntimeError: Event loop is closed
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnhandledThreadExceptionWarning(msg))
+
+tests/unit/test_websocket_manager.py::test_redis_pubsub_listener_exhaustive
+tests/unit/test_websocket_manager.py::test_redis_pubsub_listener_error_path
+  /home/kamau/bsopt./apps/api/src/websocket/channels.py:75: DeprecationWarning: Call to deprecated close. (Use aclose() instead) -- Deprecated since version 5.0.1.
+    await pubsub.close()
+
+tests/unit/test_websocket_manager.py::test_redis_pubsub_listener_error_path
+tests/unit/test_websocket_manager.py::test_redis_pubsub_listener_error_path
+  /home/kamau/bsopt./apps/api/src/cache/redis_client.py:40: DeprecationWarning: Call to deprecated close. (Use aclose() instead) -- Deprecated since version 5.0.1.
+    await RedisManager._redis.close()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.14.4-final-0 ________________
+
+Name                                        Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------
+src/analysis/convergence.py                    20     20      4      0     0%   3-49
+src/analysis/statistics.py                     31     20      4      0    31%   13-19, 24, 29-35, 54, 67, 72-77
+src/auth/dependencies.py                       25      5      6      0    77%   40-48, 67
+src/cache/redis_client.py                      50      1     16      1    97%   79
+src/data/pipeline.py                           56     22      8      2    56%   50-51, 56-62, 68-116
+src/data/transformers.py                       17     13     12      0    14%   11-46
+src/data/validators.py                         50      2     34      0    98%   80-81
+src/data/watchdog_handler.py                   48      4     12      1    92%   35, 48-50
+src/database/neon_client.py                    43      8      6      2    80%   42->exit, 44-45, 72-79
+src/database/repository.py                    149    111     18      0    23%   19-21, 26-28, 33-42, 71-72, 96-97, 128-150, 157-171, 178-179, 195-221, 226-232, 237-238, 250-267, 280-305, 310-312, 319-320, 334-343, 350-363, 368-373, 384-385, 408-409, 424-428, 435-436, 451-455, 460-462, 467-469, 474-476
+src/exceptions.py                              24      0      2      1    96%   62->64
+src/logging_config.py                          13      1      2      1    87%   24
+src/main.py                                    54     18      0      0    67%   41-68, 96-97
+src/methods/analytical.py                      64      1      6      1    97%   137
+src/methods/base.py                            42      1     12      1    96%   36
+src/methods/finite_difference/explicit.py      37      2      8      1    93%   80-85
+src/methods/tree_methods/trinomial.py          39      4      6      1    89%   54-61
+src/mlops/feature_store.py                     19     12      2      0    33%   26-31, 45-57
+src/mlops/mlflow_tracker.py                    21      4      2      1    78%   35, 37-39
+src/mlops/ray_runner.py                        48     23      6      1    48%   55, 73-74, 77-89, 97-113
+src/notifications/email.py                     37     24      6      1    33%   21-55, 65-80
+src/notifications/hierarchy.py                 43      7      8      3    76%   43-44, 47->50, 79, 83-87
+src/notifications/push.py                      39     21      8      2    43%   28-55, 65-79
+src/queue/consumer.py                          38     10      6      2    68%   24, 33-34, 43-50
+src/queue/publisher.py                         31     11      2      0    61%   39-40, 49-68
+src/queue/rabbitmq_client.py                   33      2      8      3    88%   31->34, 39->46, 42-43, 46->exit
+src/routers/downloads.py                       24     12      4      0    43%   31-57
+src/routers/experiments.py                     12      3      0      0    75%   28-37
+src/routers/market_data.py                     10      2      0      0    80%   25-27
+src/routers/mlops.py                           35     19      2      0    43%   24-47, 60-65, 76-84
+src/routers/notifications.py                   17      7      2      0    53%   24-30, 42-43
+src/routers/pricing.py                         31     17      2      0    42%   50-83
+src/routers/scrapers.py                        17      7      2      0    53%   24-32, 46
+src/routers/websocket.py                       18     10      0      0    44%   24-34
+src/scrapers/scraper_factory.py                10     10      4      0     0%   3-21
+src/scrapers/spy_scraper.py                    10     10      0      0     0%   3-20
+src/websocket/channels.py                      42      1     10      1    96%   52->74, 72
+src/websocket/manager.py                       56      0     28      2    98%   65->68, 101->100
+---------------------------------------------------------------------------------------
+TOTAL                                        1797    445    290     28    74%
+
+39 files skipped due to complete coverage.
+FAIL Required test coverage of 100.0% not reached. Total coverage: 73.50%
+=========================== short test summary info ============================
+FAILED tests/unit/test_cache.py::test_redis_compression - RuntimeError: Event...
+FAILED tests/unit/test_cache.py::test_redis_serialization_nested - RuntimeErr...
+FAILED tests/unit/test_mlops.py::test_notifications_exhaustive - AttributeErr...
+FAILED tests/unit/test_queue.py::test_close_rabbitmq - RuntimeError: Event lo...
+FAILED tests/unit/test_queue.py::test_rabbitmq_reconnect_when_closed - ValueE...
+ERROR tests/unit/test_mlops.py::test_repository_exhaustive - asyncpg.exceptio...
+ERROR tests/unit/test_queue.py::test_publish_and_consume_watchdog_task - Runt...
+ERROR tests/unit/test_queue.py::test_publish_watchdog_task_compressed - Runti...
+ERROR tests/unit/test_queue.py::test_publish_scraper_task - RuntimeError: Eve...
+ERROR tests/unit/test_queue.py::test_process_watchdog_task_logic - RuntimeErr...
+ERROR tests/unit/test_queue.py::test_process_watchdog_task_empty_payload - Ru...
+ERROR tests/unit/test_queue.py::test_process_watchdog_task_invalid_json - Run...
+ERROR tests/unit/test_watchdog_handler.py::test_handler_valid_file - RuntimeE...
+============= 5 failed, 78 passed, 8 warnings, 8 errors in 21.08s ==============

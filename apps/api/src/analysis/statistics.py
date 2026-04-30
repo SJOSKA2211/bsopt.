@@ -42,7 +42,12 @@ def compute_basic_stats(prices: list[float]) -> dict[str, float]:
 
 
 def calculate_greeks(
-    S: float, K: float, T: float, sigma: float, r: float, option_type: str = "call"
+    underlying_price: float,
+    strike_price: float,
+    time_to_expiry: float,
+    sigma: float,
+    r: float,
+    option_type: str = "call",
 ) -> dict[str, float]:
     """Calculate option Greeks using analytical formulas."""
     # Placeholder for coverage; in real app this uses Black-Scholes formulas
@@ -50,7 +55,12 @@ def calculate_greeks(
 
 
 def calculate_implied_volatility(
-    price: float, S: float, K: float, T: float, r: float, option_type: str = "call"
+    price: float,
+    underlying_price: float,
+    strike_price: float,
+    time_to_expiry: float,
+    r: float,
+    option_type: str = "call",
 ) -> float:
     """Invert Black-Scholes to find implied volatility."""
     # Placeholder for coverage

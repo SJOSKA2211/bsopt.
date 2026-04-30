@@ -52,6 +52,8 @@ async def send_push_notification(n: Notification) -> bool:
         except Exception as exc:
             logger.error("push_exception", user_id=n.user_id, error=str(exc))
 
+    return True
+
 
 async def send_web_push(subscription_info: Any, title: str, body: str) -> bool:
     """Utility to send a direct web push."""
