@@ -1,33 +1,38 @@
-"""Drift detection for pricing models."""
+"""Model drift detection using 7-day rolling MAPE comparison."""
 
 from __future__ import annotations
 
 import structlog
 
-from src.notifications.hierarchy import NotificationRouter
+from src.database.repository import query_recent_mape
+from src.notifications.hierarchy import Notification, NotificationRouter
 
 logger = structlog.get_logger(__name__)
+DRIFT_THRESHOLD_PCT: float = 0.5
 
 
 async def check_model_drift(
-    method_name: str,
+    method_type: str,
     baseline_mape: float,
-    notification_router: NotificationRouter,
-    alert_recipients: list[str],
+    router: NotificationRouter,
+    user_ids: list[str],
 ) -> bool:
-    """Compare current MAPE against baseline to detect drift."""
-    # Simulation for now: drift is detected if baseline is high in the test
-    # In production, this would query NeonDB for recent error metrics
-    current_mape = 0.0  # Placeholder for recent actual MAPE
+    """Alert via notification hierarchy if drift > DRIFT_THRESHOLD_PCT."""
+    current_mape = await query_recent_mape(method_type=method_type, days=7)
     drift = abs(current_mape - baseline_mape)
-
-    if drift > 0.5:
-        logger.warning("model_drift_detected", method=method_name, drift=drift)
-        await notification_router.route_notification(
-            user_id=alert_recipients[0],  # Just use first recipient for now
-            title="Model Drift Alert",
-            message=f"Model {method_name} has drifted by {drift:.4f}",
-            channels=["email", "web_push"],
-        )
+    if drift > DRIFT_THRESHOLD_PCT:
+        for uid in user_ids:
+            await router.dispatch(
+                Notification(
+                    user_id=uid,
+                    title=f"Drift detected: {method_type}",
+                    body=(
+                        f"MAPE rose from {baseline_mape:.4f}% to {current_mape:.4f}%. "
+                        f"Drift: {drift:.4f}%. Trigger retraining via /dashboard/mlops."
+                    ),
+                    severity="warning",
+                    action_url="/dashboard/mlops",
+                )
+            )
         return True
     return False

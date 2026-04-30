@@ -1,23 +1,34 @@
-"""WebSocket router for real-time updates."""
+"""WebSocket router for real-time bidirectional communication."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import structlog
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from src.websocket.manager import manager
 
-router = APIRouter(prefix="/ws", tags=["websocket"])
+router = APIRouter()
+logger = structlog.get_logger(__name__)
 
 
-@router.websocket("/{channel}")
-async def websocket_endpoint(websocket: WebSocket, channel: str) -> None:
-    """Accept and manage WebSocket connections per channel."""
-    await manager.connect(websocket, channel)
+@router.websocket("/ws/{channel}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    channel: str,
+    user_id: str | None = Query(None),
+) -> None:
+    """
+    Handle WebSocket connections for specific channels.
+    Includes user_id for targeted notifications.
+    """
+    await manager.connect(websocket, channel, user_id)
     try:
         while True:
-            # Keep-alive or handle incoming messages (though mainly for broadcast)
-            await websocket.receive_text()
+            # Keep the connection alive and handle incoming messages if needed
+            data = await websocket.receive_json()
+            logger.debug("websocket_message_received", channel=channel, data=data)
     except WebSocketDisconnect:
-        manager.disconnect(websocket, channel)
-    except Exception:
-        manager.disconnect(websocket, channel)
+        manager.disconnect(websocket, channel, user_id)
+    except Exception as exc:
+        logger.error("websocket_error", error=str(exc), channel=channel)
+        manager.disconnect(websocket, channel, user_id)

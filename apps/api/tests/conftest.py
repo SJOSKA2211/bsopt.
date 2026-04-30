@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Any, cast, Generator
 
 import pytest
 import pytest_asyncio
@@ -26,7 +26,7 @@ from src.main import app
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client() -> Generator[TestClient, None, None]:
     """Synchronous test client for FastAPI with lifespan support."""
     with TestClient(app) as c:
         yield c
@@ -98,8 +98,29 @@ async def db_cleanup() -> AsyncGenerator[None, None]:
         
     try:
         channel = await get_rabbitmq_channel()
-        await channel.queue_purge("bs.watchdog")
+        await cast(Any, channel).queue_purge("bs.watchdog")
     except Exception:
         pass
         
     yield
+
+
+@pytest_asyncio.fixture
+async def test_user(db_cleanup: Any) -> dict[str, str]:
+    """Create a real test user in the DB and return their record."""
+    from src.database.neon_client import acquire
+    from uuid import uuid4
+    
+    user_id = uuid4()
+    async with acquire() as conn:
+        await conn.execute(
+            "INSERT INTO users (id, email, role) VALUES ($1, $2, $3)",
+            str(user_id), "test@example.com", "admin"
+        )
+    return {"id": str(user_id), "email": "test@example.com", "role": "admin"}
+
+
+@pytest.fixture
+def auth_headers(test_user: dict[str, str]) -> dict[str, str]:
+    """Return authorization headers for the test user."""
+    return {"Authorization": f"Bearer {test_user['id']}"}

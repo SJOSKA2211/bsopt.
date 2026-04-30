@@ -1,67 +1,57 @@
-"""Web Push API implementation using pywebpush — Phase 10."""
+"""Web Push notification service using pywebpush — Python 3.14."""
 
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 import structlog
 from pywebpush import WebPushException, webpush
 
 from src.config import get_settings
 from src.database.repository import get_user_push_subscriptions
-from src.notifications.hierarchy import Notification
+
+if TYPE_CHECKING:
+    from src.notifications.hierarchy import Notification
 
 logger = structlog.get_logger(__name__)
+settings = get_settings()
 
 
 async def send_push_notification(n: Notification) -> bool:
-    """Send web push notification using pywebpush."""
-    settings = get_settings()
+    """Send a Web Push alert to all registered devices for a user."""
     if not settings.gh_vapid_private_key or not settings.gh_vapid_public_key:
-        logger.warning("push_skipped_no_keys", user_id=n.user_id, step="notification", rows=0)
+        logger.warning("vapid_keys_missing", user_id=n.user_id)
         return False
 
-    # 1. Fetch user's push subscriptions from DB
+    # Fetch subscriptions from the DB
     subscriptions = await get_user_push_subscriptions(n.user_id)
-
     if not subscriptions:
-        logger.debug("push_no_subscriptions", user_id=n.user_id, step="notification", rows=0)
         return False
 
     success_count = 0
-    for sub_json in subscriptions:
+    payload = {
+        "title": n.title,
+        "body": n.body,
+        "icon": "/icons/icon-192x192.png",
+        "data": {"url": n.action_url or "/dashboard"},
+    }
+
+    for sub_item in subscriptions:
         try:
-            subscription_info = json.loads(sub_json)
+            subscription_info = (
+                json.loads(sub_item) if isinstance(sub_item, str) else sub_item
+            )
             webpush(
                 subscription_info=subscription_info,
-                data=json.dumps(
-                    {
-                        "title": n.title,
-                        "body": n.body,
-                        "url": n.action_url or "/",
-                        "tag": f"bsopt-{n.severity}",
-                    }
-                ),
+                data=json.dumps(payload),
                 vapid_private_key=settings.gh_vapid_private_key,
-                vapid_claims={"sub": "mailto:admin@bsopt.example.com"},
+                vapid_claims={"sub": f"mailto:{settings.resend_from_email}"},
             )
             success_count += 1
         except WebPushException as exc:
-            logger.warning(
-                "push_individual_failed",
-                user_id=n.user_id,
-                error=str(exc),
-                step="notification",
-                rows=0,
-            )
+            logger.error("push_failed", user_id=n.user_id, error=str(exc))
         except Exception as exc:
-            logger.error(
-                "push_error", error=str(exc), severity="error", step="notification", rows=0
-            )
+            logger.error("push_exception", user_id=n.user_id, error=str(exc))
 
-    if success_count > 0:
-        logger.info(
-            "push_sent", user_id=n.user_id, count=success_count, step="notification", rows=0
-        )
-        return True
-    return False
+    return success_count > 0

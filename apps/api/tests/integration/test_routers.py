@@ -10,7 +10,7 @@ def test_pricing_endpoint_all_methods(client: TestClient) -> None:
     payload = {
         "underlying_price": 100.0,
         "strike_price": 100.0,
-        "time_to_maturity": 1.0,
+        "time_to_expiry": 1.0,
         "volatility": 0.2,
         "risk_free_rate": 0.05,
         "option_type": "call"

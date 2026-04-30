@@ -28,7 +28,7 @@ class NseNextScraper(BaseScraper):
             {
                 "underlying_price": 1200.0,
                 "strike_price": 1250.0,
-                "time_to_maturity": 0.1,
+                "time_to_expiry": 0.1,
                 "volatility": 0.25,
                 "risk_free_rate": 0.09,
                 "option_type": "call",

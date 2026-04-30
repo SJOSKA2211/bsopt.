@@ -1,75 +1,83 @@
-"""MLOps management router."""
+"""MLOps router for managing Ray jobs and MLflow experiments."""
 
 from __future__ import annotations
 
 from typing import Any
 
 import ray
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 
+from src.auth.dependencies import get_admin_user, get_current_user
 from src.config import get_settings
-from src.database.neon_client import acquire
+from src.mlops.drift_detector import check_model_drift
+from src.mlops.ray_runner import RayExperimentRunner
 
-router = APIRouter(prefix="/mlops", tags=["MLOps"])
+router = APIRouter(prefix="/mlops", tags=["mlops"])
+settings = get_settings()
 
 
 @router.get("/status")
-async def get_status() -> dict[str, Any]:
-    """Get Ray cluster status and MLflow connection info."""
-    settings = get_settings()
+async def get_mlops_status(
+    user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Get status of Ray cluster and MLflow tracking."""
+    try:
+        if not ray.is_initialized():
+            ray.init(address=settings.ray_address, ignore_reinit_error=True)
 
-    ray_info = {
-        "connected": ray.is_initialized(),
-        "address": settings.ray_address,
-        "resources": {},
-    }
-
-    if ray.is_initialized():
         from typing import cast
+        # Use getattr and cast to Any to bypass Mypy's disallow-untyped-calls for the Ray library
+        cluster_resources_func = cast("Any", ray.cluster_resources)
+        nodes_func = cast("Any", ray.nodes)
 
-        resources: Any = ray.cluster_resources()  # type: ignore[no-untyped-call]
-        ray_info["resources"] = cast("dict[str, float]", resources)
-
-    return {
-        "ray": ray_info,
-        "mlflow": {
-            "tracking_uri": settings.mlflow_tracking_uri,
-        },
-    }
-
-
-@router.get("/stats")
-async def get_mlops_stats() -> dict[str, Any]:
-    """Retrieve MLOps KPIs for the dashboard."""
-    async with acquire() as conn:
-        experiment_count = await conn.fetchval("SELECT COUNT(*) FROM ml_experiments")
-        option_count = await conn.fetchval("SELECT COUNT(*) FROM option_parameters")
-
-        # Count drift alerts (severity='warning' or 'error' related to drift)
-        drift_alerts = await conn.fetchval(
-            "SELECT COUNT(*) FROM notifications WHERE title LIKE '%Drift%' AND read = FALSE"
-        )
-
-        # Scraper rows inserted in last 24h
-        spy_rows = await conn.fetchval(
-            "SELECT SUM(rows_inserted) FROM scrape_runs WHERE market = 'spy' AND finished_at > NOW() - INTERVAL '24 hours'"
-        )
-        nse_rows = await conn.fetchval(
-            "SELECT SUM(rows_inserted) FROM scrape_runs WHERE market = 'nse' AND finished_at > NOW() - INTERVAL '24 hours'"
-        )
-
+        resources = cluster_resources_func()
         return {
-            "experiment_count": experiment_count or 0,
-            "option_count": option_count or 0,
-            "drift_alerts": drift_alerts or 0,
-            "spy_rows_24h": spy_rows or 0,
-            "nse_rows_24h": nse_rows or 0,
-            "ray_active_tasks": 0,  # To be pulled from Ray client if possible
+            "ray": {
+                "initialized": True,
+                "cpus": resources.get("CPU", 0),
+                "memory": resources.get("memory", 0),
+                "nodes": len(nodes_func()),
+            },
+            "mlflow": {
+                "tracking_uri": settings.mlflow_tracking_uri,
+            },
+        }
+    except Exception as exc:
+        return {
+            "ray": {"initialized": False, "error": str(exc)},
+            "mlflow": {"tracking_uri": settings.mlflow_tracking_uri},
         }
 
 
-@router.post("/retrain")
-async def trigger_retraining(experiment_name: str) -> dict[str, str]:
-    """Trigger a new Ray training job for volatility surface."""
-    # This would typically publish a task to RabbitMQ for a Ray task
-    return {"status": "retraining_scheduled", "experiment": experiment_name}
+@router.post("/experiments/run")
+async def trigger_experiment(
+    experiment_name: str,
+    param_grid: list[tuple[dict[str, Any], str]],
+    user: dict[str, Any] = Depends(get_admin_user),
+) -> dict[str, Any]:
+    """Trigger a distributed Ray experiment. Admin only."""
+    runner = RayExperimentRunner(settings.ray_address, settings.mlflow_tracking_uri)
+    try:
+        results = runner.run_grid(experiment_name, param_grid)
+        return {"status": "success", "results_count": len(results)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/drift/check")
+async def trigger_drift_check(
+    method_type: str,
+    baseline_mape: float,
+    user_ids: list[str],
+    user: dict[str, Any] = Depends(get_admin_user),
+) -> dict[str, Any]:
+    """Manually trigger model drift detection. Admin only."""
+    from src.notifications.hierarchy import notification_router
+
+    drift_detected = await check_model_drift(
+        method_type=method_type,
+        baseline_mape=baseline_mape,
+        router=notification_router,
+        user_ids=user_ids,
+    )
+    return {"method_type": method_type, "drift_detected": drift_detected}

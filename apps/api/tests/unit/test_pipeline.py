@@ -12,14 +12,14 @@ async def test_options_pipeline_run(tmp_path):
     csv_path = tmp_path / "spy_options.csv"
     with open(csv_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=[
-            "underlying_price", "strike_price", "time_to_maturity", 
+            "underlying_price", "strike_price", "time_to_expiry", 
             "volatility", "risk_free_rate", "option_type", "bid", "ask"
         ])
         writer.writeheader()
         writer.writerow({
             "underlying_price": 100.0,
             "strike_price": 100.0,
-            "time_to_maturity": 1.0,
+            "time_to_expiry": 1.0,
             "volatility": 0.2,
             "risk_free_rate": 0.05,
             "option_type": "call",

@@ -126,17 +126,17 @@ async def test_redis_pubsub_listener() -> None:
         
         # Publish to Redis
         redis = await get_redis()
-        payload = {"test": "data_pubsub"}
-        await redis.publish("bsopt:ws:metrics", json.dumps(payload))
-        
+        payload = {"channel": "metrics", "event": {"test": "data_pubsub"}}
+        await redis.publish("bsopt:events", json.dumps(payload))
+
         # Poll for the message instead of fixed sleep
         for _ in range(10):
             if len(ws.sent_messages) > 0:
                 break
             await asyncio.sleep(0.2)
-        
+
         assert len(ws.sent_messages) == 1
-        assert json.loads(ws.sent_messages[0]) == payload
+        assert json.loads(ws.sent_messages[0]) == payload["event"]
     finally:
         listener_task.cancel()
 @pytest.mark.unit

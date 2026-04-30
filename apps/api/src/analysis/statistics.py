@@ -1,23 +1,37 @@
-"""Statistical analysis helpers for option pricing methods."""
+"""Statistics and data export utilities — Python 3.14."""
 
 from __future__ import annotations
 
-import numpy as np
+import csv
+import io
+import json
+from typing import Any
 
 
-def calculate_mape(actual: float, predicted: float) -> float:
-    """Calculate Mean Absolute Percentage Error."""
-    if actual == 0:
-        return 0.0
-    return abs((actual - predicted) / actual) * 100.0
+def export_to_csv(data: list[dict[str, Any]]) -> str:
+    """Convert a list of dictionaries to a CSV string."""
+    if not data:
+        return ""
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=data[0].keys())
+    writer.writeheader()
+    writer.writerows(data)
+    return output.getvalue()
 
 
-def calculate_summary_stats(values: list[float]) -> dict[str, float]:
-    """Calculate basic summary statistics for a list of values."""
-    if not values:
+def export_to_json(data: list[dict[str, Any]]) -> str:
+    """Convert a list of dictionaries to a formatted JSON string."""
+    return json.dumps(data, indent=2, default=str)
+
+
+def compute_basic_stats(prices: list[float]) -> dict[str, float]:
+    """Compute basic descriptive statistics for a list of prices."""
+    import numpy as np
+
+    if not prices:
         return {}
 
-    arr = np.array(values)
+    arr = np.array(prices)
     return {
         "mean": float(np.mean(arr)),
         "std": float(np.std(arr)),
@@ -25,21 +39,3 @@ def calculate_summary_stats(values: list[float]) -> dict[str, float]:
         "max": float(np.max(arr)),
         "median": float(np.median(arr)),
     }
-
-
-def calculate_confidence_interval(
-    values: list[float], confidence: float = 0.95
-) -> tuple[float, float]:
-    """Calculate confidence interval using normal approximation."""
-    if not values:
-        return 0.0, 0.0
-
-    arr = np.array(values)
-    mean = np.mean(arr)
-    std = np.std(arr, ddof=1)
-    n = len(arr)
-
-    from scipy import stats
-
-    h = std * stats.t.ppf((1 + confidence) / 2.0, n - 1) / np.sqrt(n)
-    return float(mean - h), float(mean + h)

@@ -2,6 +2,8 @@
 from __future__ import annotations
 import pytest
 import numpy as np
+
+pytestmark = pytest.mark.unit
 from src.methods.base import OptionParams, PricingResult
 from src.methods.analytical import BlackScholesAnalytical
 from src.methods.finite_difference.explicit import ExplicitFDM
@@ -27,7 +29,7 @@ def base_params():
         option_type="call"
     )
 
-def test_option_params_validation():
+def test_option_params_validation() -> None:
     with pytest.raises(ValueError, match="positive"):
         OptionParams(0, 100, 1, 0.2, 0.05, "call")
     with pytest.raises(ValueError, match="positive"):
@@ -116,15 +118,37 @@ def test_antithetic_mc_put(base_params):
 
 def test_binomial_crr_american(base_params):
     pricer = BinomialCRR()
-    res_euro = pricer.price(base_params, num_steps=500, american=False)
+    # European call
+    params_euro = OptionParams(
+        base_params.underlying_price,
+        base_params.strike_price,
+        base_params.time_to_expiry,
+        base_params.volatility,
+        base_params.risk_free_rate,
+        base_params.option_type,
+        exercise_type="european",
+    )
+    res_euro = pricer.price(params_euro, num_steps=500)
     assert pytest.approx(res_euro.computed_price, 0.01) == 10.45
-    
-    res_amer = pricer.price(base_params, num_steps=500, american=True)
+
+    # American call (should be same as Euro for non-dividend)
+    params_amer = OptionParams(
+        base_params.underlying_price,
+        base_params.strike_price,
+        base_params.time_to_expiry,
+        base_params.volatility,
+        base_params.risk_free_rate,
+        base_params.option_type,
+        exercise_type="american",
+    )
+    res_amer = pricer.price(params_amer, num_steps=500)
     assert pytest.approx(res_amer.computed_price, 0.01) == 10.45
-    
-    params_put = OptionParams(100, 100, 1, 0.2, 0.05, "put")
-    res_euro_put = pricer.price(params_put, num_steps=500, american=False)
-    res_amer_put = pricer.price(params_put, num_steps=500, american=True)
+
+    # American put (should be higher than Euro)
+    params_put_euro = OptionParams(100, 100, 1, 0.2, 0.05, "put", exercise_type="european")
+    params_put_amer = OptionParams(100, 100, 1, 0.2, 0.05, "put", exercise_type="american")
+    res_euro_put = pricer.price(params_put_euro, num_steps=500)
+    res_amer_put = pricer.price(params_put_amer, num_steps=500)
     assert res_amer_put.computed_price > res_euro_put.computed_price
 
 def test_trinomial_put(base_params):
@@ -151,3 +175,24 @@ def test_all_methods_agreement(pricer_class, base_params):
     bs_price = 10.4505
     tol = 0.3 if "MonteCarlo" in pricer.__class__.__name__ else 0.1
     assert pytest.approx(res.computed_price, abs=tol) == bs_price
+
+
+def test_analytical_geometric_asian(base_params):
+    pricer = BlackScholesAnalytical()
+    price = pricer.geometric_asian_price(base_params)
+    # For a fixed underlying and volatility, GA price < BS price
+    assert 0 < price < 10.45
+
+
+def test_control_variate_mc_convergence(base_params):
+    pricer = ControlVariateMonteCarlo()
+    # Use 10,000 paths for more stability in unit test
+    res = pricer.price(base_params, num_paths=10000)
+    assert pytest.approx(res.computed_price, abs=0.2) == 10.45
+
+
+def test_quasi_mc_sobol_paths(base_params):
+    pricer = QuasiMonteCarlo()
+    # Should enforce power of 2
+    res = pricer.price(base_params, num_paths=500)
+    assert res.parameter_set["num_paths"] == 512

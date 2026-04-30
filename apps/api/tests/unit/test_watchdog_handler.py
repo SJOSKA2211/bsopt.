@@ -23,7 +23,7 @@ def test_handler_ignores_directories() -> None:
     """Verify that directories do not trigger processing."""
     handler = BsoptFileHandler()
     event = DirCreatedEvent("/tmp/test_dir")
-    assert handler.on_created(event) is None
+    handler.on_created(event)
 
 
 @pytest.mark.unit
@@ -33,7 +33,7 @@ def test_handler_ignores_unsupported_extensions(tmp_path: Path) -> None:
     test_file = tmp_path / "test.txt"
     test_file.write_text("dummy")
     event = FileCreatedEvent(str(test_file))
-    assert handler.on_created(event) is None
+    handler.on_created(event)
 
 
 @pytest.mark.unit

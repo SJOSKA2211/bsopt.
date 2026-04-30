@@ -19,26 +19,33 @@ class AntitheticMonteCarlo(BasePricer):
         if num_paths % 2 != 0:
             num_paths += 1
 
-        S = params.underlying_price
-        K = params.strike_price
-        T = params.time_to_expiry
-        sigma = params.volatility
-        r = params.risk_free_rate
+        underlying_price = params.underlying_price
+        strike_price = params.strike_price
+        time_to_expiry = params.time_to_expiry
+        volatility = params.volatility
+        risk_free_rate = params.risk_free_rate
 
         rng = np.random.default_rng()
-        z = rng.standard_normal(num_paths // 2)
+        half_samples = rng.standard_normal(num_paths // 2)
 
-        # Combine Z and -Z
-        z_antithetic = np.concatenate([z, -z])
+        # Combine samples and their negatives
+        combined_samples = np.concatenate([half_samples, -half_samples])
 
-        ST = S * np.exp((r - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * z_antithetic)
+        terminal_spot_prices = underlying_price * np.exp(
+            (risk_free_rate - 0.5 * volatility**2) * time_to_expiry
+            + volatility * np.sqrt(time_to_expiry) * combined_samples
+        )
 
-        payoffs = np.maximum(ST - K, 0) if params.option_type == "call" else np.maximum(K - ST, 0)
+        payoffs = (
+            np.maximum(terminal_spot_prices - strike_price, 0)
+            if params.option_type == "call"
+            else np.maximum(strike_price - terminal_spot_prices, 0)
+        )
 
         # Average the pairs
         payoffs_combined = (payoffs[: num_paths // 2] + payoffs[num_paths // 2 :]) / 2
 
-        price = np.mean(payoffs_combined) * np.exp(-r * T)
+        price = np.mean(payoffs_combined) * np.exp(-risk_free_rate * time_to_expiry)
         std_err = np.std(payoffs_combined) / np.sqrt(num_paths // 2)
 
         exec_time = time.perf_counter() - start_time

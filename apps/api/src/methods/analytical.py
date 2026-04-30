@@ -17,19 +17,26 @@ class BlackScholesAnalytical(BasePricer):
     def price(self, params: OptionParams) -> PricingResult:
         start_time = time.perf_counter()
 
-        S = params.underlying_price
-        K = params.strike_price
-        T = params.time_to_expiry
-        sigma = params.volatility
-        r = params.risk_free_rate
+        underlying_price = params.underlying_price
+        strike_price = params.strike_price
+        time_to_expiry = params.time_to_expiry
+        volatility = params.volatility
+        risk_free_rate = params.risk_free_rate
 
-        d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-        d2 = d1 - sigma * np.sqrt(T)
+        d1 = (
+            np.log(underlying_price / strike_price)
+            + (risk_free_rate + 0.5 * volatility**2) * time_to_expiry
+        ) / (volatility * np.sqrt(time_to_expiry))
+        d2 = d1 - volatility * np.sqrt(time_to_expiry)
 
         if params.option_type == "call":
-            price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+            price = underlying_price * norm.cdf(d1) - strike_price * np.exp(
+                -risk_free_rate * time_to_expiry
+            ) * norm.cdf(d2)
         else:
-            price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+            price = strike_price * np.exp(-risk_free_rate * time_to_expiry) * norm.cdf(
+                -d2
+            ) - underlying_price * norm.cdf(-d1)
 
         exec_time = time.perf_counter() - start_time
         return self._create_result(params, price, exec_time=exec_time)
@@ -37,29 +44,48 @@ class BlackScholesAnalytical(BasePricer):
     @staticmethod
     def greeks(params: OptionParams) -> dict[str, float]:
         """Compute Delta, Gamma, Vega, Theta, Rho."""
-        S = params.underlying_price
-        K = params.strike_price
-        T = params.time_to_expiry
-        sigma = params.volatility
-        r = params.risk_free_rate
+        underlying_price = params.underlying_price
+        strike_price = params.strike_price
+        time_to_expiry = params.time_to_expiry
+        volatility = params.volatility
+        risk_free_rate = params.risk_free_rate
 
-        d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-        d2 = d1 - sigma * np.sqrt(T)
+        d1 = (
+            np.log(underlying_price / strike_price)
+            + (risk_free_rate + 0.5 * volatility**2) * time_to_expiry
+        ) / (volatility * np.sqrt(time_to_expiry))
+        d2 = d1 - volatility * np.sqrt(time_to_expiry)
 
         pdf_d1 = norm.pdf(d1)
 
         delta = norm.cdf(d1) if params.option_type == "call" else norm.cdf(d1) - 1
-        gamma = pdf_d1 / (S * sigma * np.sqrt(T))
-        vega = S * pdf_d1 * np.sqrt(T)
+        gamma = pdf_d1 / (underlying_price * volatility * np.sqrt(time_to_expiry))
+        vega = underlying_price * pdf_d1 * np.sqrt(time_to_expiry)
 
         if params.option_type == "call":
-            theta = -(S * pdf_d1 * sigma) / (2 * np.sqrt(T)) - r * K * np.exp(-r * T) * norm.cdf(d2)
-            rho = K * T * np.exp(-r * T) * norm.cdf(d2)
+            theta = -(underlying_price * pdf_d1 * volatility) / (
+                2 * np.sqrt(time_to_expiry)
+            ) - risk_free_rate * strike_price * np.exp(-risk_free_rate * time_to_expiry) * norm.cdf(
+                d2
+            )
+            rho = (
+                strike_price
+                * time_to_expiry
+                * np.exp(-risk_free_rate * time_to_expiry)
+                * norm.cdf(d2)
+            )
         else:
-            theta = -(S * pdf_d1 * sigma) / (2 * np.sqrt(T)) + r * K * np.exp(-r * T) * norm.cdf(
+            theta = -(underlying_price * pdf_d1 * volatility) / (
+                2 * np.sqrt(time_to_expiry)
+            ) + risk_free_rate * strike_price * np.exp(-risk_free_rate * time_to_expiry) * norm.cdf(
                 -d2
             )
-            rho = -K * T * np.exp(-r * T) * norm.cdf(-d2)
+            rho = (
+                -strike_price
+                * time_to_expiry
+                * np.exp(-risk_free_rate * time_to_expiry)
+                * norm.cdf(-d2)
+            )
 
         return {"delta": delta, "gamma": gamma, "vega": vega, "theta": theta, "rho": rho}
 
@@ -67,12 +93,12 @@ class BlackScholesAnalytical(BasePricer):
     def implied_volatility(market_price: float, params: OptionParams) -> float:
         """Invert Black-Scholes to find implied volatility using Brent's method."""
 
-        def objective(sigma: float) -> float:
+        def objective(volatility: float) -> float:
             p = OptionParams(
                 underlying_price=params.underlying_price,
                 strike_price=params.strike_price,
                 time_to_expiry=params.time_to_expiry,
-                volatility=sigma,
+                volatility=volatility,
                 risk_free_rate=params.risk_free_rate,
                 option_type=params.option_type,
             )
@@ -82,3 +108,36 @@ class BlackScholesAnalytical(BasePricer):
             return float(brentq(objective, 1e-6, 5.0))
         except ValueError, RuntimeError:
             return 0.0
+
+    @staticmethod
+    def geometric_asian_price(params: OptionParams) -> float:
+        """Analytical price for a Geometric Asian option (continuous average)."""
+        underlying_price = params.underlying_price
+        strike_price = params.strike_price
+        time_to_expiry = params.time_to_expiry
+        volatility = params.volatility
+        risk_free_rate = params.risk_free_rate
+
+        # Adjusted volatility and drift for geometric average
+        vol_adj = volatility / np.sqrt(3.0)
+        rho_adj = 0.5 * (risk_free_rate - 0.5 * (volatility**2 - (vol_adj**2)))
+
+        d1 = (
+            np.log(underlying_price / strike_price) + (rho_adj + 0.5 * vol_adj**2) * time_to_expiry
+        ) / (vol_adj * np.sqrt(time_to_expiry))
+        d2 = d1 - vol_adj * np.sqrt(time_to_expiry)
+
+        if params.option_type == "call":
+            price = underlying_price * np.exp(
+                (rho_adj - risk_free_rate) * time_to_expiry
+            ) * norm.cdf(d1) - strike_price * np.exp(-risk_free_rate * time_to_expiry) * norm.cdf(
+                d2
+            )
+        else:
+            price = strike_price * np.exp(-risk_free_rate * time_to_expiry) * norm.cdf(
+                -d2
+            ) - underlying_price * np.exp((rho_adj - risk_free_rate) * time_to_expiry) * norm.cdf(
+                -d1
+            )
+
+        return float(price)

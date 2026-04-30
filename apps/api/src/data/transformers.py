@@ -33,7 +33,7 @@ def transform_market_row(row: dict[str, Any]) -> dict[str, Any]:
     for field in [
         "underlying_price",
         "strike_price",
-        "time_to_maturity",
+        "time_to_expiry",
         "risk_free_rate",
         "bid",
         "ask",

@@ -1,62 +1,30 @@
-"""Router for market data and option parameters."""
+"""Market data router for browsing current option prices."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
-from src.database.neon_client import acquire
+from src.auth.dependencies import get_current_user
+from src.database.repository import query_market_data
 
-router = APIRouter(prefix="/market", tags=["Market Data"])
+router = APIRouter(prefix="/market-data", tags=["market_data"])
 
 
-@router.get("/options")
-async def list_options(
-    market: str | None = Query(None),
-    limit: int = Query(50, le=100),
-    offset: int = Query(0, ge=0),
+@router.get("/")
+async def list_market_data(
+    market_source: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Retrieve a paginated list of option parameters."""
-    async with acquire() as conn:
-        query = """
-            SELECT * FROM option_parameters
-            WHERE ($1::text IS NULL OR market_source = $1)
-            ORDER BY created_at DESC
-            LIMIT $2 OFFSET $3
-        """
-        rows = await conn.fetch(query, market, limit, offset)
+    """
+    Fetch recent market data for options.
+    Authenticated users only.
+    """
+    results = await query_market_data(market_source=market_source, limit=limit)
 
-        count = await conn.fetchval(
-            "SELECT COUNT(*) FROM option_parameters WHERE ($1::text IS NULL OR market_source = $1)",
-            market,
-        )
-
-        return {
-            "items": [dict(row) for row in rows],
-            "total": count,
-            "limit": limit,
-            "offset": offset,
-        }
-
-
-@router.get("/quotes")
-async def get_market_quotes(
-    market: str = Query(..., description="e.g., spy, nse"),
-    limit: int = Query(100, le=500),
-) -> list[dict[str, Any]]:
-    """Retrieve recent market quotes for a specific market."""
-    async with acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT md.*, op.strike_price, op.option_type
-            FROM market_data md
-            JOIN option_parameters op ON md.option_id = op.id
-            WHERE op.market_source = $1
-            ORDER BY md.trade_date DESC, md.created_at DESC
-            LIMIT $2
-            """,
-            market,
-            limit,
-        )
-        return [dict(row) for row in rows]
+    return {
+        "results": results,
+        "count": len(results),
+    }

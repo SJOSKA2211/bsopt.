@@ -1,25 +1,67 @@
-"""Authentication dependencies for FastAPI backend."""
+"""Authentication dependencies for FastAPI — Python 3.14."""
 
 from __future__ import annotations
 
 from typing import Annotated
+from uuid import UUID
 
-import structlog
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, HTTPException, Security, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-logger = structlog.get_logger(__name__)
+from src.database.repository import get_user_by_id
+
+security = HTTPBearer(auto_error=False)
 
 
-async def get_current_user_id(x_user_id: Annotated[str | None, Header()] = None) -> str:
+async def get_current_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Security(security)],
+) -> dict[str, str | UUID]:
     """
-    Extract the authenticated user ID from the request headers.
-    In production, this header is set by the reverse proxy (Nginx)
-    after validating the session with NextAuth.
+    Validate the authentication token and return the user record.
+    For this project, we assume the token is a UUID (session ID or sub from NextAuth).
     """
-    if not x_user_id:
-        logger.warning("unauthorized_access_attempt", step="auth")
+    if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing X-User-ID header",
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    return x_user_id
+
+    token = credentials.credentials
+    try:
+        user_id = UUID(token)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    user = await get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+async def get_admin_user(
+    current_user: Annotated[dict[str, str | UUID], Depends(get_current_user)],
+) -> dict[str, str | UUID]:
+    """Validate that the current user has the admin role."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+    return current_user
+
+
+async def get_current_user_id(
+    current_user: Annotated[dict[str, str | UUID], Depends(get_current_user)],
+) -> UUID:
+    """Return the UUID of the currently authenticated user."""
+    return current_user["id"]  # type: ignore

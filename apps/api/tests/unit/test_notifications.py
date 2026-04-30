@@ -18,28 +18,22 @@ class StubWebSocket:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_notification_router_dispatch_info():
-    # Patch manager
-    from src.websocket import manager as manager_mod
-    original_manager = manager_mod.manager
-    manager_mod.manager = ConnectionManager()
-    
+async def test_notification_router_dispatch_info() -> None:
+    manager = ConnectionManager()
     ws = StubWebSocket()
-    await manager_mod.manager.connect(ws, "notifications", user_id="user1") # type: ignore
-    
-    router = NotificationRouter()
+    await manager.connect(ws, "notifications", user_id="user1")  # type: ignore
+
+    router = NotificationRouter(websocket_manager=manager)
     n = Notification(user_id="user1", title="Info", body="Body", severity="info")
     await router.dispatch(n)
-    
+
     # Check WebSocket
     assert len(ws.sent_messages) == 1
     assert "Info" in ws.sent_messages[0]
-    
-    manager_mod.manager = original_manager
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_notification_router_dispatch_critical():
+async def test_notification_router_dispatch_critical() -> None:
     # We expect push and email to be skipped because of missing keys
     router = NotificationRouter()
     n = Notification(user_id="user1", title="Critical", body="Body", severity="critical")
@@ -48,7 +42,7 @@ async def test_notification_router_dispatch_critical():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_push_notification_skip():
+async def test_push_notification_skip() -> None:
     from src.notifications.push import send_push_notification
     n = Notification(user_id="user1", title="T", body="B")
     # Ensure keys are NOT set
@@ -59,7 +53,7 @@ async def test_push_notification_skip():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_email_notification_skip():
+async def test_email_notification_skip() -> None:
     from src.notifications.email import send_email_notification
     n = Notification(user_id="user1", title="T", body="B")
     # Ensure key is NOT set

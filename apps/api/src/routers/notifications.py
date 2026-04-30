@@ -1,43 +1,43 @@
-"""Notifications management router."""
+"""Notifications router for managing user alerts."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
-from src.auth.dependencies import get_current_user_id
-from src.database.neon_client import acquire
+from src.auth.dependencies import get_current_user
+from src.database.repository import mark_notification_read, query_notifications
 
-if TYPE_CHECKING:
-    from uuid import UUID
-
-router = APIRouter(prefix="/notifications", tags=["Notifications"])
+router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 @router.get("/")
-async def get_notifications(
-    user_id: UUID = Depends(get_current_user_id),
-) -> list[dict[str, Any]]:
-    """Retrieve all notifications for the authenticated user."""
-    async with acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC",
-            user_id,
-        )
-        return [dict(row) for row in rows]
+async def list_notifications(
+    limit: int = Query(20, ge=1, le=100),
+    user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Fetch recent notifications for the current user.
+    Authenticated users only.
+    """
+    user_id = user.get("id")
+    if not user_id:
+        return {"results": [], "count": 0}
+
+    results = await query_notifications(user_id=user_id, limit=limit)
+
+    return {
+        "results": results,
+        "count": len(results),
+    }
 
 
 @router.post("/{notification_id}/read")
-async def mark_as_read(
-    notification_id: UUID,
-    user_id: UUID = Depends(get_current_user_id),
+async def mark_read(
+    notification_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, str]:
-    """Mark a specific notification as read."""
-    async with acquire() as conn:
-        await conn.execute(
-            "UPDATE notifications SET read = TRUE WHERE id = $1 AND user_id = $2",
-            notification_id,
-            user_id,
-        )
-        return {"status": "success"}
+    """Mark a notification as read."""
+    await mark_notification_read(notification_id)
+    return {"status": "success"}

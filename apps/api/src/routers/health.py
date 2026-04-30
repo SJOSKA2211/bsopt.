@@ -1,4 +1,4 @@
-"""Healthcheck router for bsopt."""
+"""Health check router for service monitoring."""
 
 from __future__ import annotations
 
@@ -13,20 +13,17 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check() -> dict[str, str]:
-    """Check system health including database connectivity."""
-    db_status = "disconnected"
+    """Verify system health, database connectivity, and Python version."""
+    db_status = "connected"
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
             await conn.execute("SELECT 1")
-        db_status = "connected"
     except Exception:
         db_status = "disconnected"
 
-    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-
     return {
-        "status": "ok",
+        "status": "ok" if db_status == "connected" else "degraded",
         "db": db_status,
-        "python": python_version,
+        "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
     }

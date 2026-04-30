@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from src.data.transformers import transform_market_row
 
-def test_transform_market_row_mappings():
+def test_transform_market_row_mappings() -> None:
     row = {
         "strike": 100,
         "lastPrice": 10.5,
@@ -17,7 +17,7 @@ def test_transform_market_row_mappings():
     assert transformed["maturity_date"] == date(2024, 12, 31)
     assert transformed["implied_vol"] == 0.25
 
-def test_transform_market_row_types():
+def test_transform_market_row_types() -> None:
     row = {
         "underlying_price": "100.5",
         "strike_price": "100",
@@ -32,7 +32,7 @@ def test_transform_market_row_types():
     assert isinstance(transformed["trade_date"], date)
     assert transformed["trade_date"] == date(2024, 1, 1)
 
-def test_transform_market_row_missing_optional():
+def test_transform_market_row_missing_optional() -> None:
     row = {"underlying_price": 100}
     transformed = transform_market_row(row)
     assert transformed["underlying_price"] == 100.0

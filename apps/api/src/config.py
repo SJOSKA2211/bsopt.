@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     google_client_id: str = "placeholder_google_id"
     google_client_secret: str = "placeholder_google_secret"
     resend_api_key: str = "placeholder_resend_key"
+    resend_from_email: str = "alerts@bsopt.example.com"
 
     # Public URLs
     next_public_ws_url: str = "wss://api.bsopt.example.com/ws"

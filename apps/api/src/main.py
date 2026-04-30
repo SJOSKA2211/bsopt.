@@ -15,6 +15,7 @@ from prometheus_client import make_asgi_app
 from src.config import get_settings
 from src.data.watchdog_handler import start_watchdog
 from src.database.neon_client import get_pool
+from src.logging_config import setup_logging
 from src.routers import (
     downloads,
     experiments,
@@ -66,6 +67,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await close_pool()
     logger.info("app_shutdown_complete")
 
+
+# Initialize logging
+setup_logging(debug=get_settings().debug)
 
 app = FastAPI(
     title="bsopt API",

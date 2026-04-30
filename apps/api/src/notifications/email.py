@@ -1,47 +1,55 @@
-"""Resend transactional email implementation — Phase 10."""
+"""Email notification service using Resend — Python 3.14."""
 
 from __future__ import annotations
 
-import resend
+from typing import TYPE_CHECKING
+
+import httpx
 import structlog
 
 from src.config import get_settings
-from src.notifications.hierarchy import Notification
+
+if TYPE_CHECKING:
+    from src.notifications.hierarchy import Notification
 
 logger = structlog.get_logger(__name__)
+settings = get_settings()
 
 
 async def send_email_notification(n: Notification) -> bool:
-    """Send transactional email via Resend."""
-    settings = get_settings()
+    """Send an email alert via Resend API."""
     if not settings.resend_api_key:
-        logger.warning("email_skipped_no_api_key", user_id=n.user_id, step="notification", rows=0)
+        logger.warning("resend_api_key_missing", user_id=n.user_id)
         return False
 
-    resend.api_key = settings.resend_api_key
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {settings.resend_api_key}",
+        "Content-Type": "application/json",
+    }
+
+    # In a real app, we would fetch the user's email from the DB
+    # For now, we use a placeholder or assume user_id is the email for demo
+    payload = {
+        "from": "bsopt@resend.dev",
+        "to": [n.user_id if "@" in n.user_id else "alerts@bsopt.example.com"],
+        "subject": n.title,
+        "html": (
+            f"<p>{n.body}</p><a href='{n.action_url}'>View Details</a>"
+            if n.action_url
+            else f"<p>{n.body}</p>"
+        ),
+    }
 
     try:
-        # Note: In a real system, we would lookup the user's email from the DB
-        # For this implementation, we assume user_id is the email or we use a fallback
-        email_to = n.user_id if "@" in n.user_id else "onboarding@resend.dev"
-
-        resend.Emails.send(
-            {
-                "from": "bsopt@resend.dev",
-                "to": email_to,
-                "subject": n.title,
-                "html": f"<strong>{n.title}</strong><p>{n.body}</p>",
-            }
-        )
-        logger.info("email_sent", user_id=n.user_id, step="notification", rows=0)
-        return True
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=headers, json=payload)
+            if response.status_code == 201:
+                logger.info("email_sent", user_id=n.user_id, title=n.title)
+                return True
+            else:
+                logger.error("email_failed", status=response.status_code, body=response.text)
+                return False
     except Exception as exc:
-        logger.error(
-            "email_failed",
-            user_id=n.user_id,
-            error=str(exc),
-            severity="error",
-            step="notification",
-            rows=0,
-        )
+        logger.error("email_exception", error=str(exc))
         return False

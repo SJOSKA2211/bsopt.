@@ -10,53 +10,57 @@ from src.methods.base import BasePricer, OptionParams, PricingResult
 class BinomialCRR(BasePricer):
     """CRR Binomial Tree with O(n) memory efficiency."""
 
-    def price(
-        self, params: OptionParams, num_steps: int = 1000, american: bool = False
-    ) -> PricingResult:
+    def price(self, params: OptionParams, num_steps: int = 1000) -> PricingResult:
         start_time = self._start_timer()
 
-        S = params.underlying_price
-        K = params.strike_price
-        T = params.time_to_expiry
-        sigma = params.volatility
-        r = params.risk_free_rate
-        dt = T / num_steps
+        underlying_price = params.underlying_price
+        strike_price = params.strike_price
+        time_to_expiry = params.time_to_expiry
+        volatility = params.volatility
+        risk_free_rate = params.risk_free_rate
+        delta_time = time_to_expiry / num_steps
 
-        u = np.exp(sigma * np.sqrt(dt))
-        d = 1.0 / u
-        q = (np.exp(r * dt) - d) / (u - d)
-        df = np.exp(-r * dt)
+        up_factor = np.exp(volatility * np.sqrt(delta_time))
+        down_factor = 1.0 / up_factor
+        risk_neutral_prob = (np.exp(risk_free_rate * delta_time) - down_factor) / (
+            up_factor - down_factor
+        )
+        discount_factor = np.exp(-risk_free_rate * delta_time)
 
         # Final state prices
-        # nodes at step N: S * u^j * d^(N-j) = S * u^(2j-N)
-        j = np.arange(num_steps + 1)
-        S_values = S * (u ** (2 * j - num_steps))
+        # nodes at step num_steps: S * u^j * d^(num_steps-j) = S * u^(2j-num_steps)
+        node_indices = np.arange(num_steps + 1)
+        spot_values = underlying_price * (up_factor ** (2 * node_indices - num_steps))
 
         if params.option_type == "call":
-            grid = np.maximum(S_values - K, 0)
+            grid = np.maximum(spot_values - strike_price, 0)
         else:
-            grid = np.maximum(K - S_values, 0)
+            grid = np.maximum(strike_price - spot_values, 0)
 
         # Backward induction
-        for i in range(num_steps - 1, -1, -1):
-            grid = df * (q * grid[1:] + (1 - q) * grid[:-1])
+        for step_index in range(num_steps - 1, -1, -1):
+            grid = discount_factor * (
+                risk_neutral_prob * grid[1:] + (1 - risk_neutral_prob) * grid[:-1]
+            )
 
-            if american:
+            if params.exercise_type == "american":
                 # Early exercise check
-                j_i = np.arange(i + 1)
-                S_i = S * (u ** (2 * j_i - i))
-                exercise = (
-                    np.maximum(S_i - K, 0)
-                    if params.option_type == "call"
-                    else np.maximum(K - S_i, 0)
+                current_node_indices = np.arange(step_index + 1)
+                current_spot_values = underlying_price * (
+                    up_factor ** (2 * current_node_indices - step_index)
                 )
-                grid = np.maximum(grid, exercise)
+                exercise_payoff = (
+                    np.maximum(current_spot_values - strike_price, 0)
+                    if params.option_type == "call"
+                    else np.maximum(strike_price - current_spot_values, 0)
+                )
+                grid = np.maximum(grid, exercise_payoff)
 
         price = grid[0]
 
         exec_time = self._stop_timer(start_time)
         result = self._create_result(params, float(price), exec_time=exec_time)
         result.parameter_set["num_steps"] = num_steps
-        result.parameter_set["american"] = american
+        result.parameter_set["exercise_type"] = params.exercise_type
 
         return result

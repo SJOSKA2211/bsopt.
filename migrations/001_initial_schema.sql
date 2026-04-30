@@ -16,14 +16,16 @@ CREATE TABLE IF NOT EXISTS option_parameters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     underlying_price FLOAT8 NOT NULL CHECK (underlying_price > 0),
     strike_price FLOAT8 NOT NULL CHECK (strike_price > 0),
-    time_to_maturity FLOAT8 NOT NULL CHECK (time_to_maturity > 0),
+    time_to_expiry FLOAT8 NOT NULL CHECK (time_to_expiry > 0),
     volatility FLOAT8 NOT NULL CHECK (volatility > 0),
     risk_free_rate FLOAT8 NOT NULL CHECK (risk_free_rate >= 0),
     option_type TEXT CHECK (option_type IN ('call', 'put')),
+    exercise_type TEXT DEFAULT 'european' CHECK (exercise_type IN ('european', 'american')),
     market_source TEXT,
     created_by UUID REFERENCES users(id),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(underlying_price, strike_price, time_to_maturity, volatility, risk_free_rate, option_type, market_source)
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(underlying_price, strike_price, time_to_expiry, volatility, risk_free_rate, option_type, exercise_type, market_source)
 );
 
 CREATE TABLE IF NOT EXISTS method_results (

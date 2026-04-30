@@ -15,20 +15,20 @@ class RichardsonExtrapolation(BasePricer):
 
         crr = BinomialCRR()
 
-        # Compute V(n)
-        v_n = crr.price(params, num_steps=num_steps).computed_price
+        # Compute V(num_steps)
+        price_n = crr.price(params, num_steps=num_steps).computed_price
 
-        # Compute V(2n)
-        v_2n = crr.price(params, num_steps=2 * num_steps).computed_price
+        # Compute V(2*num_steps)
+        price_2n = crr.price(params, num_steps=2 * num_steps).computed_price
 
         # Extrapolate
-        price = 2 * v_2n - v_n
+        price = 2 * price_2n - price_n
 
         exec_time = self._stop_timer(start_time)
         result = self._create_result(params, float(price), exec_time=exec_time)
         result.parameter_set["num_steps_base"] = num_steps
-        result.parameter_set["price_n"] = v_n
-        result.parameter_set["price_2n"] = v_2n
+        result.parameter_set["price_n"] = price_n
+        result.parameter_set["price_2n"] = price_2n
 
         return result
 
@@ -41,19 +41,19 @@ class TrinomialRichardsonExtrapolation(BasePricer):
 
         tree = TrinomialTree()
 
-        # Compute V(n)
-        v_n = tree.price(params, num_steps=num_steps).computed_price
+        # Compute V(num_steps)
+        price_n = tree.price(params, num_steps=num_steps).computed_price
 
-        # Compute V(2n)
-        v_2n = tree.price(params, num_steps=2 * num_steps).computed_price
+        # Compute V(2*num_steps)
+        price_2n = tree.price(params, num_steps=2 * num_steps).computed_price
 
         # Extrapolate
-        price = 2 * v_2n - v_n
+        price = 2 * price_2n - price_n
 
         exec_time = self._stop_timer(start_time)
         result = self._create_result(params, float(price), exec_time=exec_time)
         result.parameter_set["num_steps_base"] = num_steps
-        result.parameter_set["price_n"] = v_n
-        result.parameter_set["price_2n"] = v_2n
+        result.parameter_set["price_n"] = price_n
+        result.parameter_set["price_2n"] = price_2n
 
         return result

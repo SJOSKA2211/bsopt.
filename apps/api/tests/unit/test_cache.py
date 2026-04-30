@@ -135,9 +135,9 @@ async def test_close_redis() -> None:
     
     # Trigger exception in aclose manually by replacing it
     # Since we are Zero-Mock, we avoid MagicMock but we can manually override
-    original_aclose = client.aclose
-    async def broken_aclose(): raise Exception("Fail")
-    client.aclose = broken_aclose # type: ignore
+    original_close = client.close
+    async def broken_close(): raise Exception("Fail")
+    client.close = broken_close # type: ignore
     
     await close_redis()
     assert RedisManager._redis is None

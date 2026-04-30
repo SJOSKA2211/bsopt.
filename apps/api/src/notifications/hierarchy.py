@@ -8,7 +8,7 @@ from typing import Literal
 import structlog
 
 from src.metrics import NOTIFICATIONS_SENT
-from src.websocket.manager import manager
+from src.websocket.manager import ConnectionManager
 
 logger = structlog.get_logger(__name__)
 
@@ -27,6 +27,11 @@ class Notification:
 
 class NotificationRouter:
     """Dispatches notifications to multiple channels based on severity."""
+
+    def __init__(self, websocket_manager: ConnectionManager | None = None) -> None:
+        from src.websocket.manager import manager as global_manager
+
+        self.manager = websocket_manager or global_manager
 
     async def dispatch(self, notification: Notification) -> None:
         """Route notification to appropriate channels."""
@@ -62,7 +67,7 @@ class NotificationRouter:
                 "action_url": n.action_url,
             },
         }
-        await manager.send_personal_message(payload, n.user_id)
+        await self.manager.send_personal_message(payload, n.user_id)
         NOTIFICATIONS_SENT.labels(channel="websocket", severity=n.severity).inc()
 
     async def _to_push(self, n: Notification) -> None:
@@ -80,3 +85,7 @@ class NotificationRouter:
         success = await send_email_notification(n)
         if success:
             NOTIFICATIONS_SENT.labels(channel="email", severity=n.severity).inc()
+
+
+# Global router instance
+notification_router = NotificationRouter()

@@ -17,7 +17,7 @@ def test_ray_runner_local_grid() -> None:
         runner.connect()
         
         param_grid = [
-            ({"underlying_price": 100, "strike_price": 100, "time_to_maturity": 1, "volatility": 0.2, "risk_free_rate": 0.05, "option_type": "call"}, "analytical")
+            ({"underlying_price": 100, "strike_price": 100, "time_to_expiry": 1, "volatility": 0.2, "risk_free_rate": 0.05, "option_type": "call"}, "analytical")
         ]
         
         results = runner.run_grid("integration_test_grid", param_grid)

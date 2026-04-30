@@ -73,25 +73,7 @@ select = [
   "E","W","F","I","B","C4","UP","N","S","ANN","SIM","TCH",
   "RUF","ERA","PIE","PL","PERF","FURB",
 ]
-ignore = [
-    "ANN101", # Missing type annotation for `self` in method
-    "ANN102", # Missing type annotation for `cls` in classmethod
-    "S101",   # Use of `assert` detected
-    "PLC0415", # `import` should be at the top-level of a file
-    "B008",   # Do not perform function call `Depends` in argument defaults
-    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
-    "PLR2004", # Magic value used in comparison
-    "E501",   # Line too long
-    "ERA001", # Found commented-out code
-    "PLR0913", # Too many arguments in function definition
-    "SIM102", # Use a single `if` statement instead of nested `if` statements
-    "SIM105", # Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
-    "S110", # `try`-`except`-`pass` detected
-    "TCH001", # Move application import into a type-checking block
-    "TCH002", # Move third-party import into a type-checking block
-    "TCH003", # Move standard library import into a type-checking block
-    "N806",   # Variable in function should be lowercase (allow S, K, T for math)
-]
+ignore = ["ANN101","ANN102","S101","PLC0415","B008","ANN401","E501","TC001","TC002","TC003","PLR2004","SIM105","S110","PLR0913","ERA001","SIM102","N806","PERF203","SIM108","T201","UP007"]
  
 [tool.ruff.lint.per-file-ignores]
 "tests/**"   = ["S101","ANN"]

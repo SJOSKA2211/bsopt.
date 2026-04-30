@@ -20,7 +20,7 @@ from src.database.repository import (
 @pytest.mark.asyncio
 async def test_repository_full_lifecycle(db_cleanup):
     # 1. Save Option Params
-    opt_id = await save_option_parameters(100.0, 100.0, 1.0, 0.2, 0.05, "call")
+    opt_id = await save_option_parameters(100.0, 100.0, 1.0, 0.2, 0.05, "call", "spy")
     assert isinstance(opt_id, UUID)
     
     # 2. Save Method Result

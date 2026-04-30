@@ -18,6 +18,7 @@ class OptionParams:
     volatility: float
     risk_free_rate: float
     option_type: str  # "call" or "put"
+    exercise_type: str = "european"  # "european" or "american"
     market_source: str = "unknown"
 
     def __post_init__(self) -> None:
@@ -31,6 +32,8 @@ class OptionParams:
             raise ValueError("Volatility must be positive")
         if self.option_type not in ("call", "put"):
             raise ValueError("Option type must be 'call' or 'put'")
+        if self.exercise_type not in ("european", "american"):
+            raise ValueError("Exercise type must be 'european' or 'american'")
 
 
 @dataclass(frozen=True)

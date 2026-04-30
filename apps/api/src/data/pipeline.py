@@ -79,10 +79,11 @@ class OptionsPipeline(BasePipeline):
                 option_id = await save_option_parameters(
                     underlying_price=clean_row["underlying_price"],
                     strike_price=clean_row["strike_price"],
-                    time_to_maturity=clean_row["time_to_maturity"],
+                    time_to_expiry=clean_row["time_to_expiry"],
                     volatility=clean_row["volatility"],
                     risk_free_rate=clean_row["risk_free_rate"],
                     option_type=clean_row["option_type"],
+                    exercise_type=clean_row.get("exercise_type", "european"),
                     market_source=self.market,
                 )
 

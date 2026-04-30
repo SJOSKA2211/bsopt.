@@ -17,20 +17,27 @@ class StandardMonteCarlo(BasePricer):
     def price(self, params: OptionParams, num_paths: int = 100000) -> PricingResult:
         start_time = time.perf_counter()
 
-        S = params.underlying_price
-        K = params.strike_price
-        T = params.time_to_expiry
-        sigma = params.volatility
-        r = params.risk_free_rate
+        underlying_price = params.underlying_price
+        strike_price = params.strike_price
+        time_to_expiry = params.time_to_expiry
+        volatility = params.volatility
+        risk_free_rate = params.risk_free_rate
 
         # Exact log-normal simulation
         rng = np.random.default_rng()
-        z = rng.standard_normal(num_paths)
-        ST = S * np.exp((r - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * z)
+        standard_normal_samples = rng.standard_normal(num_paths)
+        terminal_spot_prices = underlying_price * np.exp(
+            (risk_free_rate - 0.5 * volatility**2) * time_to_expiry
+            + volatility * np.sqrt(time_to_expiry) * standard_normal_samples
+        )
 
-        payoffs = np.maximum(ST - K, 0) if params.option_type == "call" else np.maximum(K - ST, 0)
+        payoffs = (
+            np.maximum(terminal_spot_prices - strike_price, 0)
+            if params.option_type == "call"
+            else np.maximum(strike_price - terminal_spot_prices, 0)
+        )
 
-        price = np.mean(payoffs) * np.exp(-r * T)
+        price = np.mean(payoffs) * np.exp(-risk_free_rate * time_to_expiry)
         std_err = np.std(payoffs) / np.sqrt(num_paths)
 
         exec_time = time.perf_counter() - start_time

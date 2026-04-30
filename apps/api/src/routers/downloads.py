@@ -1,64 +1,57 @@
-"""Download router for exporting research results."""
+"""Downloads router for exporting experiment data — Python 3.14."""
 
 from __future__ import annotations
 
-import io
 from typing import Any
+from uuid import uuid4
 
-import pandas as pd
-from fastapi import APIRouter, HTTPException, Response
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from src.analysis.statistics import export_to_csv, export_to_json
+from src.auth.dependencies import get_current_user
+from src.database.repository import query_experiments
+from src.storage.storage_service import StorageService
 
 router = APIRouter(prefix="/downloads", tags=["downloads"])
+storage = StorageService()
 
 
-@router.get("/{export_format}")
-async def download_results(export_format: str, experiment_id: str | None = None) -> Any:
-    """Export experiment results in CSV, JSON, or XLSX format."""
-    if export_format not in ("csv", "json", "xlsx"):
-        raise HTTPException(status_code=400, detail="Unsupported format")
+@router.post("/export")
+async def export_data(
+    format: str = Query("csv", regex="^(csv|json)$"),
+    method_type: str | None = None,
+    market_source: str | None = None,
+    user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, str]:
+    """
+    Export experiment results to a file and return a presigned download URL.
+    Authenticated users only.
+    """
+    # 1. Fetch data
+    results = await query_experiments(
+        method_type=method_type, market_source=market_source, limit=1000
+    )
+    if not results:
+        raise HTTPException(status_code=404, detail="No data found to export")
 
-    # In a real scenario, we'd fetch method_results for the experiment_id
-    from src.database.neon_client import acquire
+    # 2. Transform
+    if format == "csv":
+        content = export_to_csv(results)
+        content_type = "text/csv"
+    else:
+        content = export_to_json(results)
+        content_type = "application/json"
 
-    async with acquire() as conn:
-        query = """
-            SELECT mr.method_type, mr.computed_price, op.underlying_price, op.strike_price
-            FROM method_results mr
-            JOIN option_parameters op ON mr.option_id = op.id
-            ORDER BY mr.id DESC
-            LIMIT 100
-        """
-        rows = await conn.fetch(query)
-        data = [dict(r) for r in rows]
+    # 3. Upload to MinIO
+    filename = f"export_{uuid4()}.{format}"
+    await storage.upload_file(
+        bucket="bsopt-exports",
+        object_name=filename,
+        file_data=content.encode("utf-8"),
+        content_type=content_type,
+    )
 
-    if not data:
-        raise HTTPException(status_code=404, detail="No results found to export")
+    # 4. Generate presigned URL
+    url = await storage.get_presigned_url(bucket="bsopt-exports", object_name=filename)
 
-    df = pd.DataFrame(data)
-
-    if export_format == "csv":
-        stream = io.StringIO()
-        df.to_csv(stream, index=False)
-        return Response(
-            content=stream.getvalue(),
-            media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=results.csv"},
-        )
-
-    if export_format == "json":
-        return Response(
-            content=df.to_json(orient="records"),
-            media_type="application/json",
-            headers={"Content-Disposition": "attachment; filename=results.json"},
-        )
-
-    if export_format == "xlsx":
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            df.to_excel(writer, index=False)
-        return StreamingResponse(
-            io.BytesIO(output.getvalue()),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=results.xlsx"},
-        )
+    return {"download_url": url, "filename": filename}

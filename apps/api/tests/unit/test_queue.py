@@ -7,6 +7,8 @@ import pytest
 import asyncio
 import gzip
 from uuid import uuid4
+from typing import Any, cast
+from unittest.mock import MagicMock
 from src.queue.publisher import _create_watchdog_payload, publish_watchdog_task, publish_scraper_task
 from src.queue.rabbitmq_client import get_rabbitmq_channel, close_rabbitmq, get_rabbitmq_connection
 from src.queue.consumer import process_watchdog_task, start_consumers
@@ -126,7 +128,7 @@ async def test_process_watchdog_task_logic(db_cleanup: None) -> None:
         try:
             payload = json.loads(body.decode())
             if payload.get("file_path") == file_path:
-                await process_watchdog_task(message)
+                await process_watchdog_task(cast(Any, message))
                 break
         except Exception:
             continue
@@ -151,7 +153,7 @@ async def test_process_watchdog_task_empty_payload(db_cleanup: None) -> None:
         try:
             payload = json.loads(message.body.decode())
             if payload.get("_id") == unique_id:
-                await process_watchdog_task(message)
+                await process_watchdog_task(cast(Any, message))
                 break
         except Exception:
             continue
@@ -172,7 +174,8 @@ async def test_process_watchdog_task_invalid_json(db_cleanup: None) -> None:
     )
     message = await queue.get(timeout=5)
     assert message is not None
-    await process_watchdog_task(message)
+    with pytest.raises(Exception):
+        await process_watchdog_task(cast(Any, message))
 
 
 @pytest.mark.unit

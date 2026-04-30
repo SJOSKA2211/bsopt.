@@ -24,7 +24,7 @@ async def test_pipeline_csv_processing(pipeline: OptionsPipeline, temp_dir: Path
         {
             "underlying_price": "100.0",
             "strike_price": "100.0",
-            "time_to_maturity": "1.0",
+            "time_to_expiry": "1.0",
             "volatility": "0.2",
             "risk_free_rate": "0.05",
             "option_type": "call",
@@ -48,7 +48,7 @@ async def test_pipeline_json_gz_processing(pipeline: OptionsPipeline, temp_dir: 
         {
             "underlying_price": 105.0,
             "strike_price": 100.0,
-            "time_to_maturity": 0.5,
+            "time_to_expiry": 0.5,
             "volatility": 0.25,
             "risk_free_rate": 0.04,
             "option_type": "put",
@@ -80,14 +80,14 @@ async def test_pipeline_row_error(pipeline: OptionsPipeline, temp_dir: Path, db_
         {
             "underlying_price": "100.0",
             "strike_price": "100.0",
-            "time_to_maturity": "1.0",
+            "time_to_expiry": "1.0",
             "volatility": "0.2",
             "risk_free_rate": "0.05",
             "option_type": "call",
         }
     ]
     with open(csv_file, "w", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["underlying_price", "strike_price", "time_to_maturity", "volatility", "risk_free_rate", "option_type"])
+        writer = csv.DictWriter(f, fieldnames=["underlying_price", "strike_price", "time_to_expiry", "volatility", "risk_free_rate", "option_type"])
         writer.writeheader()
         writer.writerows(data)
         

@@ -57,7 +57,6 @@ async def acquire() -> AsyncIterator[asyncpg.Connection]:
         NEON_ERRORS_TOTAL.labels(operation="acquire").inc()
         logger.error(
             "neondb_acquire_failed",
-            event="error",
             error_type=type(exc).__name__,
             error_message=str(exc),
             component="neon_client",
