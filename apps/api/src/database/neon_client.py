@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import time
-from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 import asyncpg
 import structlog
@@ -12,13 +12,16 @@ import structlog
 from src.config import get_settings
 from src.metrics import NEON_ERRORS_TOTAL, NEON_POOL_IDLE, NEON_POOL_SIZE, NEON_QUERY_DURATION
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
 logger = structlog.get_logger(__name__)
 _pool: asyncpg.Pool | None = None
 
 
 async def get_pool() -> asyncpg.Pool:
     """Return global asyncpg pool; create on first call (lazy init)."""
-    global _pool  # noqa: PLW0603
+    global _pool
     if _pool is None:
         settings = get_settings()
         _pool = await asyncpg.create_pool(
@@ -38,7 +41,7 @@ async def get_pool() -> asyncpg.Pool:
 
 async def close_pool() -> None:
     """Close the global pool."""
-    global _pool  # noqa: PLW0603
+    global _pool
     if _pool:
         await _pool.close()
         _pool = None

@@ -1,0 +1,79 @@
+services:
+  # 1. API: FastAPI backend
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: bs.api
+    ports: ["8000:8000"]
+    env_file: apps/api/.env
+    depends_on: [redis, rabbitmq, minio, neondb]
+    networks: [bsopt_net]
+    restart: always
+
+  # 2. Redis: Gzip-aware caching
+  redis:
+    image: redis:7.4-alpine
+    container_name: bs.redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-dummy_redis_password}
+    ports: ["6379:6379"]
+    networks: [bsopt_net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  # 3. RabbitMQ: Task queue
+  rabbitmq:
+    image: rabbitmq:4.0-management-alpine
+    container_name: bs.rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dummy_password}
+    ports: ["5672:5672", "15672:15672"]
+    networks: [bsopt_net]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+
+  # 4. MinIO: S3 Object Storage
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    container_name: bs.minio
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-dummy_access}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-dummy_secret}
+    ports: ["9000:9000", "9001:9001"]
+    command: server /data --console-address ":9001"
+    networks: [bsopt_net]
+
+  # 5. NeonDB: Postgres Proxy (Simulated locally via postgres:17)
+  neondb:
+    image: postgres:17-alpine
+    container_name: bs.neondb
+    environment:
+      POSTGRES_PASSWORD: dummy_password
+      POSTGRES_DB: bsopt
+    ports: ["5432:5432"]
+    networks: [bsopt_net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+
+  # 6. Prometheus: Metrics collection
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: bs.prometheus
+    volumes: ["./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"]
+    ports: ["9090:9090"]
+    networks: [bsopt_net]
+
+  # 7. Grafana: Visualization
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: bs.grafana
+    ports: ["3001:3000"]
+    networks: [bsopt_net]
+
+networks:
+  bsopt_net:
+    driver: bridge

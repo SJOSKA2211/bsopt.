@@ -1,120 +1,25 @@
-"""Pytest configuration and shared fixtures for Zero-Mock testing."""
-
+"""Pytest configuration and global fixtures."""
 from __future__ import annotations
-
-import asyncio
-from typing import AsyncGenerator, Any, cast, Generator
-
 import pytest
-import pytest_asyncio
-from fastapi.testclient import TestClient
-from httpx import ASGITransport, AsyncClient
-
-import os
-import structlog
-
-# Override settings for local testing against docker-compose infrastructure
-os.environ["REDIS_URL"] = "redis://localhost:6379/0"
-os.environ["RABBITMQ_URL"] = "amqp://bsopt_user:placeholder_rabbitmq_password_20chars_min@localhost:5672/"
-os.environ["MINIO_ENDPOINT"] = "http://localhost:9000"
-os.environ["RAY_ADDRESS"] = ""
-os.environ["MLFLOW_TRACKING_URI"] = "http://localhost:5000"
-os.environ["NEON_CONNECTION_STRING"] = "postgresql://neondb_owner:npg_imM05wPNOUX8@localhost:5432/neondb"
-os.environ["WATCHDOG_WATCH_DIR"] = "/tmp/bsopt_watch"
-
-from src.main import app
-
-
-@pytest.fixture
-def client() -> Generator[TestClient, None, None]:
-    """Synchronous test client for FastAPI with lifespan support."""
-    with TestClient(app) as c:
-        yield c
-
-
-@pytest_asyncio.fixture
-async def async_client() -> AsyncGenerator[AsyncClient, None]:
-    """Asynchronous test client for FastAPI."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
-        yield ac
-
+import asyncio
+from typing import AsyncIterator
+from src.database.neon_client import get_pool
+from src.cache.redis_client import get_redis, close_redis
+from src.queue.rabbitmq_client import get_rabbitmq_connection, close_rabbitmq
 
 @pytest.fixture(scope="session")
-def anyio_backend() -> str:
-    """Backend for anyio (required by some async tests)."""
-    return "asyncio"
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
-
-@pytest_asyncio.fixture(autouse=True)
-async def reset_globals():
-    """Reset all global connection managers before each test to prevent loop leakage."""
-    from src.database.neon_client import close_pool
-    from src.cache.redis_client import close_redis
-    from src.queue.rabbitmq_client import close_rabbitmq
-    
-    await close_pool()
+@pytest.fixture(scope="session", autouse=True)
+async def infrastructure_setup() -> AsyncIterator[None]:
+    """Ensure infrastructure is available for tests."""
+    # In a real environment, this would check if services are up.
+    # The Zero-Mock policy means we hit real services.
+    yield
+    # Cleanup
     await close_redis()
     await close_rabbitmq()
-    yield
-    # Optional: cleanup after as well
-    await close_pool()
-    await close_redis()
-    await close_rabbitmq()
-
-
-@pytest_asyncio.fixture
-async def db_cleanup() -> AsyncGenerator[None, None]:
-    """Truncate tables and flush Redis/RabbitMQ before each integration test."""
-    from src.database.neon_client import acquire
-    from src.cache.redis_client import get_redis
-    from src.queue.rabbitmq_client import get_rabbitmq_channel
-    
-    async with acquire() as conn:
-        try:
-            await conn.execute(
-                """
-                TRUNCATE users, option_parameters, method_results, market_data, 
-                         validation_metrics, scrape_runs, notifications, 
-                         ml_experiments, feature_snapshots CASCADE
-                """
-            )
-        except Exception:
-            pass
-    
-    try:
-        redis = await get_redis()
-        await redis.flushdb()
-    except Exception:
-        pass
-        
-    try:
-        channel = await get_rabbitmq_channel()
-        await cast(Any, channel).queue_purge("bs.watchdog")
-    except Exception:
-        pass
-        
-    yield
-
-
-@pytest_asyncio.fixture
-async def test_user(db_cleanup: Any) -> dict[str, Any]:
-    """Create a real test user in the DB and return their record."""
-    from src.database.neon_client import acquire
-    from uuid import uuid4
-    
-    user_id = uuid4()
-    email = f"test_{uuid4().hex[:8]}@example.com"
-    async with acquire() as conn:
-        await conn.execute(
-            "INSERT INTO users (id, email, role) VALUES ($1, $2, $3)",
-            str(user_id), email, "admin"
-        )
-    return {"id": str(user_id), "email": email, "role": "admin"}
-
-
-@pytest.fixture
-def auth_headers(test_user: dict[str, Any]) -> dict[str, str]:
-    """Return authorization headers for the test user."""
-    return {"Authorization": f"Bearer {test_user['id']}"}

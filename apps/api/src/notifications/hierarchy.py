@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import structlog
 
 from src.metrics import NOTIFICATIONS_SENT
-from src.websocket.manager import ConnectionManager
+
+if TYPE_CHECKING:
+    from src.websocket.manager import ConnectionManager
 
 logger = structlog.get_logger(__name__)
 
@@ -39,7 +41,7 @@ class NotificationRouter:
         await self._to_websocket(notification)
 
         # 2. Critical/Error severity triggers Push and Email
-        if notification.severity in ("critical", "error"):
+        if notification.severity in {"critical", "error"}:
             await self._to_push(notification)
             await self._to_email(notification)
 

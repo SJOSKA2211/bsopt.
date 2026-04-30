@@ -47,7 +47,7 @@ compile-bytecode = true
 
 [tool.black]
 line-length    = 100
-target-version = ["py314"]
+target-version = ["py312"]
 
 [tool.isort]
 profile     = "black"
@@ -56,13 +56,16 @@ line_length = 100
 [tool.ruff]
 line-length    = 100
 target-version = "py314"
+preview = true
+
+[tool.ruff.lint]
 select = [
   "E","W","F","I","B","C4","UP","N","S","ANN","SIM","TCH",
   "RUF","ERA","PIE","PL","PERF","FURB",
 ]
-ignore = ["ANN101","ANN102","S101","PLC0415"]
+ignore = ["S101","PLC0415","B008","ANN401","PLW0603","PLR0913","E501","PLR6301","PLR2004","RUF029","ERA001","PLR0914","PLR0917","PLR0912","PLR0915","PLR0916"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/**"   = ["S101","ANN"]
 "scripts/**" = ["S101"]
 

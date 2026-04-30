@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from itertools import starmap
 from typing import Any
 
 import mlflow
@@ -98,7 +99,7 @@ class RayExperimentRunner:
         with mlflow.start_run(run_name=f"grid_{experiment_name}") as run:
             mlflow.log_param("grid_size", len(param_grid))
             RAY_TASKS_SUBMITTED.labels(task_type="pricing").inc(len(param_grid))
-            futures = [price_remote.remote(p, m) for p, m in param_grid]
+            futures = list(starmap(price_remote.remote, param_grid))
             results: list[dict[str, Any]] = ray.get(futures)
             RAY_TASKS_COMPLETED.labels(task_type="pricing", status="success").inc(len(results))
             mlflow.log_metric("total_computations", len(results))

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query
 
 from src.auth.dependencies import get_current_user
 from src.database.repository import query_experiments
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 router = APIRouter(prefix="/experiments", tags=["experiments"])
 

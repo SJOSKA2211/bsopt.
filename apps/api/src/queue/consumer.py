@@ -1,61 +1,33 @@
-"""RabbitMQ task consumer for bsopt."""
+"""RabbitMQ task consumers."""
 
 from __future__ import annotations
 
-import gzip
 import json
 
 import structlog
-from aio_pika import IncomingMessage
 
 from src.metrics import RABBITMQ_CONSUMED
-from src.queue.rabbitmq_client import get_rabbitmq_channel
+from src.queue.rabbitmq_client import get_rabbitmq_connection
 
 logger = structlog.get_logger(__name__)
 
 
-async def process_watchdog_task(message: IncomingMessage) -> None:
-    """Callback for processing watchdog file drop tasks."""
-    error = None
-    async with message.process():
-        try:
-            body = message.body
-            if message.headers.get("content-encoding") == "gzip":
-                body = gzip.decompress(body)
+async def start_consumer(queue_name: str, callback: callable) -> None:
+    """Generic consumer starter."""
+    connection = await get_rabbitmq_connection()
+    channel = await connection.channel()
+    await channel.set_qos(prefetch_count=1)
+    queue = await channel.declare_queue(queue_name, durable=True)
 
-            payload = json.loads(body.decode())
-            file_path = payload.get("file_path")
-            market = payload.get("market", "unknown")
-
-            logger.info("consumer_received_task", market=market, file=file_path)
-
-            if not file_path:
-                logger.warning("consumer_empty_payload")
-                return
-
-            # Note: Pipeline import is deferred to avoid circular imports in some phases
-            from src.data.pipeline import OptionsPipeline
-
-            pipeline = OptionsPipeline(market=market)
-            await pipeline.run(file_path)
-
-            RABBITMQ_CONSUMED.labels(queue="bs.watchdog", status="success").inc()
-        except Exception as exc:
-            RABBITMQ_CONSUMED.labels(queue="bs.watchdog", status="error").inc()
-            logger.error("consumer_task_failed", error=str(exc))
-            error = exc
-            raise
-
-    if error:
-        raise error
-
-
-async def start_consumers() -> None:
-    """Initialize and start all RabbitMQ consumers."""
-    channel = await get_rabbitmq_channel()
-
-    # 1. Watchdog queue
-    queue = await channel.declare_queue("bs.watchdog", durable=True)
-    await queue.consume(process_watchdog_task)  # type: ignore[arg-type]
-
-    logger.info("consumers_started", queues=["bs.watchdog"])
+    async with queue.iterator() as queue_iter:
+        async for message in queue_iter:
+            async with message.process():
+                try:
+                    payload = json.loads(message.body.decode())
+                    await callback(payload)
+                    RABBITMQ_CONSUMED.labels(queue=queue_name, status="success").inc()
+                except Exception as exc:
+                    RABBITMQ_CONSUMED.labels(queue=queue_name, status="error").inc()
+                    logger.error("consumer_error", queue=queue_name, error=str(exc))
+                    # Optionally re-queue or send to DLX
+                    raise

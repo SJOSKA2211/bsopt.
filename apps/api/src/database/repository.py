@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, date, datetime
-from typing import Any, cast
-from uuid import UUID
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
 from src.database.neon_client import acquire
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = structlog.get_logger(__name__)
 

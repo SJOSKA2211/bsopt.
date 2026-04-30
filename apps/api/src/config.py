@@ -1,15 +1,16 @@
 """Configuration management for bsopt via pydantic-settings."""
+
 from __future__ import annotations
+
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     """System-wide settings."""
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # NeonDB
     neon_connection_string: str
@@ -59,8 +60,11 @@ class Settings(BaseSettings):
 
     # Environment
     env: str = "production"
+    enable_compression: bool = True
+    compression_threshold_bytes: int = 1024
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Return cached settings instance."""
-    return Settings() # type: ignore
+    return Settings()  # type: ignore

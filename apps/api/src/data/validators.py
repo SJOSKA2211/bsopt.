@@ -1,11 +1,7 @@
 """Data validators for market and option data."""
-
 from __future__ import annotations
-
 from typing import Any
-
 from src.exceptions import ValidationError
-
 
 def validate_option_parameters(data: dict[str, Any]) -> None:
     """Validate raw option parameter inputs."""
@@ -17,37 +13,34 @@ def validate_option_parameters(data: dict[str, Any]) -> None:
         "volatility",
         "risk_free_rate",
         "option_type",
-        "exercise_type",
     ]
 
     for field in required:
         if field not in data or data[field] is None:
-            if field == "exercise_type":
-                continue  # Default is european
             errors.append(f"Missing required field: {field}")
             continue
 
         val = data[field]
-        if field not in ("option_type", "exercise_type"):
+        if field not in {"option_type", "exercise_type"}:
             try:
                 f_val = float(val)
                 if field != "risk_free_rate" and f_val <= 0:
                     errors.append(f"{field} must be greater than zero")
                 elif field == "risk_free_rate" and f_val < 0:
                     errors.append(f"{field} must be non-negative")
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 errors.append(f"{field} must be a number")
-        elif field == "option_type" and val not in ("call", "put"):
+        elif field == "option_type" and val not in {"call", "put"}:
             errors.append("option_type must be 'call' or 'put'")
-        elif field == "exercise_type" and val not in ("european", "american"):
-            errors.append("exercise_type must be 'european' or 'american'")
+
+    if "exercise_type" in data and data["exercise_type"] not in {"european", "american"}:
+        errors.append("exercise_type must be 'european' or 'american'")
 
     if "market_source" in data and not str(data["market_source"]).strip():
         errors.append("market_source cannot be empty")
 
     if errors:
-        raise ValidationError("Option parameter validation failed", {"errors": errors})
-
+        raise ValidationError(errors)
 
 def validate_market_data(data: dict[str, Any]) -> None:
     """Validate market data inputs (bid/ask/volume)."""
@@ -59,7 +52,7 @@ def validate_market_data(data: dict[str, Any]) -> None:
                 f_val = float(data[field])
                 if f_val < 0:
                     errors.append(f"{field.capitalize()} cannot be negative")
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 errors.append(f"{field} must be a number")
 
     if (
@@ -77,8 +70,8 @@ def validate_market_data(data: dict[str, Any]) -> None:
         try:
             if int(data["volume"]) < 0:
                 errors.append("Volume cannot be negative")
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             errors.append("Volume must be an integer")
 
     if errors:
-        raise ValidationError("Market data validation failed", {"errors": errors})
+        raise ValidationError(errors)

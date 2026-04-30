@@ -21,7 +21,7 @@ async def trigger_scraper(
     Trigger a manual scrape run for a specific market.
     Admin only.
     """
-    if market not in ("spy", "nse"):
+    if market not in {"spy", "nse"}:
         raise HTTPException(status_code=400, detail="Unsupported market")
 
     from src.database.repository import save_scrape_run
