@@ -1,12 +1,13 @@
-"""Exhaustive integration tests for all FastAPI routers."""
+"""Exhaustive integration tests for all FastAPI routers — Zero-Mock."""
 
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 @pytest.mark.integration
-def test_pricing_endpoint_all_methods(client: TestClient) -> None:
+@pytest.mark.asyncio
+async def test_pricing_endpoint(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     payload = {
         "underlying_price": 100.0,
         "strike_price": 100.0,
@@ -15,56 +16,71 @@ def test_pricing_endpoint_all_methods(client: TestClient) -> None:
         "risk_free_rate": 0.05,
         "option_type": "call"
     }
-    response = client.post("/api/v1/pricing/", json=payload)
+    # Test with valid auth
+    response = await async_client.post("/api/v1/pricing/", json=payload, headers=auth_headers)
     assert response.status_code == 200
-    data = response.json()
-    assert "results" in data
-    # Some methods might be skipped if not fully configured, but we expect most
-    assert len(data["results"]) >= 1
+    assert "computed_price" in response.json()
+
+    # Test unauthorized
+    response = await async_client.post("/api/v1/pricing/", json=payload)
+    assert response.status_code == 401
 
 @pytest.mark.integration
-def test_market_data_endpoints(client: TestClient) -> None:
-    # Latest metrics
-    response = client.get("/api/v1/market/latest")
+@pytest.mark.asyncio
+async def test_market_data_endpoint(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+    response = await async_client.get("/api/v1/market-data/", headers=auth_headers)
     assert response.status_code == 200
-    
-    # History
-    response = client.get("/api/v1/market/history?symbol=SPY")
-    assert response.status_code == 200
+    assert "results" in response.json()
 
 @pytest.mark.integration
-def test_mlops_endpoints(client: TestClient) -> None:
-    # Retrain
-    response = client.post("/api/v1/mlops/retrain", json={"method_type": "analytical"})
+@pytest.mark.asyncio
+async def test_mlops_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+    # 1. Status
+    response = await async_client.get("/api/v1/mlops/status", headers=auth_headers)
     assert response.status_code == 200
-    
-    # Drift
-    response = client.get("/api/v1/mlops/drift?method_type=analytical")
-    assert response.status_code == 200
+    assert "ray" in response.json()
 
-@pytest.mark.integration
-def test_notifications_endpoints(client: TestClient) -> None:
-    payload = {
-        "user_id": "test_user",
-        "title": "Test Title",
-        "body": "Test Body",
-        "severity": "info"
+    # 2. Drift check (Admin only)
+    drift_params = {
+        "method_type": "analytical",
+        "baseline_mape": 0.05,
     }
-    response = client.post("/api/v1/notifications/send", json=payload)
+    drift_json = {
+        "user_ids": ["test-uuid"]
+    }
+    response = await async_client.post(
+        "/api/v1/mlops/drift/check", 
+        params=drift_params, 
+        json=drift_json["user_ids"], # Wait! Signature was user_ids: list[str]
+        headers=auth_headers
+    )
     assert response.status_code == 200
 
 @pytest.mark.integration
-def test_scrapers_endpoints(client: TestClient) -> None:
-    response = client.post("/api/v1/scrapers/trigger?market=spy")
+@pytest.mark.asyncio
+async def test_notifications_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+    response = await async_client.get("/api/v1/notifications/", headers=auth_headers)
     assert response.status_code == 200
+    assert "results" in response.json()
 
 @pytest.mark.integration
-def test_experiments_endpoints(client: TestClient) -> None:
-    response = client.get("/api/v1/experiments/latest")
+@pytest.mark.asyncio
+async def test_scrapers_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+    # Trigger (Admin only)
+    response = await async_client.post("/api/v1/scrapers/trigger?market=spy", headers=auth_headers)
     assert response.status_code == 200
+    assert response.json()["status"] == "success"
 
 @pytest.mark.integration
-def test_health_check(client: TestClient) -> None:
-    response = client.get("/health")
+@pytest.mark.asyncio
+async def test_experiments_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+    response = await async_client.get("/api/v1/experiments/", headers=auth_headers)
+    assert response.status_code == 200
+    assert "results" in response.json()
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_health_check(async_client: AsyncClient) -> None:
+    response = await async_client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"

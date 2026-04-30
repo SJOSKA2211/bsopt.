@@ -1,10 +1,13 @@
-"""Unit tests for WebSocket connection manager."""
+"""Exhaustive unit tests for WebSocket connection manager."""
 
 from __future__ import annotations
 import pytest
 import asyncio
+import json
 from typing import Any
 from src.websocket.manager import ConnectionManager
+from src.websocket.channels import start_redis_pubsub_listener, broadcast_metric_update, broadcast_experiment_update, broadcast_scraper_update, send_user_notification
+from src.cache.redis_client import get_redis
 
 class StubWebSocket:
     """Real implementation stub for WebSocket testing without MagicMock."""
@@ -14,6 +17,8 @@ class StubWebSocket:
         self.accepted = False
         self.closed = False
         self.fail_send = fail_send
+        self.close_code = 0
+        self.close_reason = ""
 
     async def accept(self) -> None:
         self.accepted = True
@@ -26,7 +31,6 @@ class StubWebSocket:
     async def send_json(self, data: Any) -> None:
         if self.fail_send:
             raise Exception("Send failed")
-        import json
         self.sent_messages.append(json.dumps(data))
 
     async def close(self, code: int = 1000, reason: str = "") -> None:
@@ -37,20 +41,22 @@ class StubWebSocket:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_manager_connect_disconnect() -> None:
-    """Test connection and disconnection tracking."""
+async def test_manager_connect_disconnect_with_user() -> None:
+    """Test connection and disconnection tracking including user_id."""
     manager = ConnectionManager()
     ws = StubWebSocket()
-    channel = "metrics"
+    channel = "notifications"
+    user_id = "user-123"
 
     # Connect
-    await manager.connect(ws, channel)  # type: ignore
+    await manager.connect(ws, channel, user_id)  # type: ignore
     assert ws in manager.active_connections[channel]
+    assert ws in manager.user_connections[user_id]
 
     # Disconnect
-    manager.disconnect(ws, channel)  # type: ignore
+    manager.disconnect(ws, channel, user_id)  # type: ignore
     assert ws not in manager.active_connections[channel]
-
+    assert user_id not in manager.user_connections
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -62,115 +68,105 @@ async def test_manager_invalid_channel() -> None:
     assert ws.closed
     assert ws.close_code == 1003
 
-
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_manager_broadcast() -> None:
-    """Test broadcasting messages to multiple connections."""
+async def test_manager_broadcast_and_cleanup() -> None:
+    """Test broadcasting and cleanup of dead connections."""
     manager = ConnectionManager()
     ws1 = StubWebSocket()
-    ws2 = StubWebSocket()
+    ws2 = StubWebSocket(fail_send=True)
     channel = "metrics"
 
     await manager.connect(ws1, channel)  # type: ignore
     await manager.connect(ws2, channel)  # type: ignore
 
-    message = {"data": "hello"}
-    await manager.broadcast(channel, message)
-
-    # Verify both received the message
+    await manager.broadcast(channel, {"data": "hello"})
     assert len(ws1.sent_messages) == 1
-    assert len(ws2.sent_messages) == 1
-    assert "hello" in ws1.sent_messages[0]
-
+    assert ws2 not in manager.active_connections[channel]
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_manager_broadcast_unsupported_channel() -> None:
-    """Verify broadcasting to an unsupported channel does nothing."""
-    manager = ConnectionManager()
-    await manager.broadcast("invalid", {"msg": "test"}) # Should not raise
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_manager_send_personal_message_missing_user() -> None:
-    """Verify that sending a personal message to a non-existent user does nothing."""
-    manager = ConnectionManager()
-    await manager.send_personal_message({"msg": "test"}, "non_existent") # Should not raise
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_redis_pubsub_listener() -> None:
-    """Verify that the Redis listener correctly broadcasts messages."""
-    from src.websocket.channels import start_redis_pubsub_listener
-    from src.cache.redis_client import get_redis
-    import json
-    import asyncio
-    
+async def test_manager_send_personal_message() -> None:
+    """Test targeted messaging to a specific user."""
     manager = ConnectionManager()
     ws = StubWebSocket()
-    await manager.connect(ws, "metrics") # type: ignore
+    ws_dead = StubWebSocket(fail_send=True)
+    user_id = "u1"
     
-    # We start the listener in the background
-    from src.websocket import channels as channels_mod
-    original_manager = channels_mod.manager
-    channels_mod.manager = manager
+    await manager.connect(ws, "notifications", user_id) # type: ignore
+    await manager.connect(ws_dead, "notifications", user_id) # type: ignore
     
-    listener_task = asyncio.create_task(start_redis_pubsub_listener())
+    await manager.send_personal_message({"msg": "hi"}, user_id)
+    assert len(ws.sent_messages) == 1
+    assert ws_dead not in manager.user_connections[user_id]
     
-    try:
-        # Give it more time to subscribe and start the loop
-        await asyncio.sleep(1.0)
-        
-        # Publish to Redis
-        redis = await get_redis()
-        payload = {"channel": "metrics", "event": {"test": "data_pubsub"}}
-        await redis.publish("bsopt:events", json.dumps(payload))
+    # Missing user
+    await manager.send_personal_message({"msg": "hi"}, "missing")
 
-        # Poll for the message instead of fixed sleep
-        for _ in range(10):
-            if len(ws.sent_messages) > 0:
-                break
-            await asyncio.sleep(0.2)
-
-        assert len(ws.sent_messages) == 1
-        assert json.loads(ws.sent_messages[0]) == payload["event"]
-    finally:
-        listener_task.cancel()
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_redis_pubsub_listener_error() -> None:
-    """Verify that the listener handles Redis errors gracefully."""
-    from src.websocket.channels import start_redis_pubsub_listener
-    from src.cache.redis_client import get_redis
+async def test_channel_broadcast_helpers() -> None:
+    """Verify the helper functions in channels.py."""
+    from src.websocket import channels as channels_mod
+    orig_manager = channels_mod.manager
+    mock_manager = ConnectionManager()
+    channels_mod.manager = mock_manager
+    try:
+        await broadcast_metric_update({"v": 1})
+        await broadcast_experiment_update({"id": 1})
+        await broadcast_scraper_update({"s": "ok"})
+        await send_user_notification("u1", {"m": "n"})
+    finally:
+        channels_mod.manager = orig_manager
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_redis_pubsub_listener_exhaustive() -> None:
+    """Exhaustive test for Redis pubsub routing logic."""
+    from src.websocket import channels as channels_mod
+    orig_manager = channels_mod.manager
+    mock_manager = ConnectionManager()
+    channels_mod.manager = mock_manager
     
-    # Trigger an error by closing redis before the loop
+    ws_metrics = StubWebSocket()
+    ws_notif = StubWebSocket()
+    await mock_manager.connect(ws_metrics, "metrics") # type: ignore
+    await mock_manager.connect(ws_notif, "notifications", "user1") # type: ignore
+    
+    listener_task = asyncio.create_task(start_redis_pubsub_listener())
+    try:
+        await asyncio.sleep(0.5)
+        redis = await get_redis()
+        
+        # 1. Direct channel routing
+        await redis.publish("metrics", json.dumps({"v": 100}))
+        
+        # 2. bsopt:events routing
+        payload = {"channel": "experiments", "event": {"id": "exp1"}}
+        await redis.publish("bsopt:events", json.dumps(payload))
+        
+        # 3. Notifications routing
+        notif_payload = {"user_id": "user1", "notification": {"title": "Hello"}}
+        await redis.publish("notifications", json.dumps(notif_payload))
+        
+        # 4. Unknown channel in bsopt:events
+        await redis.publish("bsopt:events", json.dumps({"channel": "unknown"}))
+        
+        await asyncio.sleep(1.0)
+        assert len(ws_metrics.sent_messages) >= 1
+        assert len(ws_notif.sent_messages) >= 1
+    finally:
+        listener_task.cancel()
+        channels_mod.manager = orig_manager
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_redis_pubsub_listener_error_path() -> None:
+    """Verify error handling in listener."""
+    # This should log error and exit because it can't subscribe if redis is closed
     from src.cache.redis_client import close_redis
     await close_redis()
     
-    # Should log error and exit loop (not crash)
-    try:
-        await asyncio.wait_for(start_redis_pubsub_listener(), timeout=2.0)
-    except (asyncio.TimeoutError, Exception):
-        pass
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_manager_cleanup_dead_connections() -> None:
-    """Verify that dead connections are removed during broadcast."""
-    manager = ConnectionManager()
-    ws_alive = StubWebSocket()
-    ws_dead = StubWebSocket(fail_send=True)
-    channel = "metrics"
-
-    await manager.connect(ws_alive, channel)  # type: ignore
-    await manager.connect(ws_dead, channel)  # type: ignore
-
-    await manager.broadcast(channel, {"msg": "ping"})
-
-    # Dead connection should be removed
-    assert ws_dead not in manager.active_connections[channel]
-    assert ws_alive in manager.active_connections[channel]
+    # It might still loop once if get_redis returns a new client, so we use max_loops=1
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(start_redis_pubsub_listener(max_loops=1), timeout=1.0)

@@ -98,10 +98,11 @@ class ConnectionManager:
                 dead_connections.append(connection)
 
         for dead in dead_connections:
-            # We don't know the channel here easily, so we might leave them in active_connections
-            # until a broadcast or global cleanup.
             if user_id in self.user_connections and dead in self.user_connections[user_id]:
                 self.user_connections[user_id].remove(dead)
+        
+        if user_id in self.user_connections and not self.user_connections[user_id]:
+            del self.user_connections[user_id]
 
 
 # Global manager instance

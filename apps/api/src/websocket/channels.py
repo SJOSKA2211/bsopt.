@@ -30,7 +30,7 @@ async def send_user_notification(user_id: str, notification: dict[str, Any]) -> 
     )
 
 
-async def start_redis_pubsub_listener() -> None:
+async def start_redis_pubsub_listener(max_loops: int | None = None) -> None:
     """Listen for global system events on Redis and broadcast them via WebSockets."""
     import json
 
@@ -47,8 +47,10 @@ async def start_redis_pubsub_listener() -> None:
 
     logger.info("redis_pubsub_listener_started")
 
+    loops = 0
     try:
-        while True:
+        while max_loops is None or loops < max_loops:
+            loops += 1
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if message:
                 channel = message["channel"].decode("utf-8")

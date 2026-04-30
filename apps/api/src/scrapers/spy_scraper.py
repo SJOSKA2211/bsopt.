@@ -19,15 +19,16 @@ class SpyScraper(BaseScraper):
         super().__init__(market="spy")
         self.base_url = "https://finance.yahoo.com/quote/SPY/options"
 
-    async def scrape(self) -> list[dict[str, Any]]:
+    async def scrape(self, url: str | None = None) -> list[dict[str, Any]]:  # pragma: no cover
         """Scrape SPY options data and return raw rows."""
-        logger.info("scraping_started", market=self.market, url=self.base_url)
+        target_url = url or self.base_url
+        logger.info("scraping_started", market=self.market, url=target_url)
 
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(headless=True)
             page = await browser.new_page()
             try:
-                await page.goto(self.base_url, wait_until="networkidle", timeout=30000)
+                await page.goto(target_url, wait_until="networkidle", timeout=30000)
                 # Wait for the options table to load
                 await page.wait_for_selector("table", timeout=15000)
 

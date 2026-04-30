@@ -302,7 +302,7 @@ async def save_method_result(
             mlflow_run_id,
         )
         assert row is not None
-        return cast(UUID, row["id"])
+        return str(row["id"]) if row else ""
 
 
 async def get_latest_metrics() -> list[dict[str, Any]]:
@@ -362,7 +362,7 @@ async def save_notification(
             severity,
         )
         assert row is not None
-        return cast(UUID, row["id"])
+        return str(row["id"]) if row else ""
 
 
 async def get_unread_notifications(user_id: str | UUID) -> list[dict[str, Any]]:

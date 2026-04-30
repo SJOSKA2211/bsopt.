@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from uuid import UUID
 import pytest
 from datetime import date
 from src.database.repository import (
@@ -18,14 +17,16 @@ from src.database.repository import (
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_repository_full_lifecycle(db_cleanup):
+async def test_repository_full_lifecycle(db_cleanup, test_user):
     # 1. Save Option Params
     opt_id = await save_option_parameters(100.0, 100.0, 1.0, 0.2, 0.05, "call", "spy")
-    assert isinstance(opt_id, UUID)
+    assert isinstance(opt_id, str)
+    assert opt_id != ""
     
     # 2. Save Method Result
     res_id = await save_method_result(opt_id, "analytical", 10.45, {"d1": 0.5}, 0.01)
-    assert isinstance(res_id, UUID)
+    assert isinstance(res_id, str)
+    assert res_id != ""
     
     # 3. Get Latest Metrics
     metrics = await get_latest_metrics()
@@ -37,8 +38,9 @@ async def test_repository_full_lifecycle(db_cleanup):
     assert mape == 0.0
     
     # 5. Save Scrape Run
-    run_id = await save_scrape_run("spy", "SpyScraper", 10, 0)
-    assert isinstance(run_id, UUID)
+    run_id = await save_scrape_run("spy", "SpyScraper", None, "success")
+    assert isinstance(run_id, str)
+    assert run_id != ""
     
     # 6. Save Model Metadata
     await save_model_metadata("test_model", "v1", "s3://path", {"mape": 0.01})
@@ -48,4 +50,6 @@ async def test_repository_full_lifecycle(db_cleanup):
     assert model["version"] == "v1"
     
     # 8. Save Notification
-    await save_notification("user1", "Title", "Body", "info")
+    notif_id = await save_notification(test_user["id"], "Title", "Body", "info")
+    assert isinstance(notif_id, str)
+    assert notif_id != ""
