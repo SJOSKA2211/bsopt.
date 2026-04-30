@@ -363,3 +363,118 @@ async def save_notification(
         )
         assert row is not None
         return cast(UUID, row["id"])
+
+
+async def get_unread_notifications(user_id: str | UUID) -> list[dict[str, Any]]:
+    """Fetch all unread notifications for a user."""
+    async with acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM notifications WHERE user_id = $1 AND read = FALSE ORDER BY created_at DESC",
+            str(user_id),
+        )
+        return [dict(row) for row in rows]
+
+
+async def mark_notification_read(notification_id: UUID | str) -> None:
+    """Mark a notification as read."""
+    async with acquire() as conn:
+        await conn.execute("UPDATE notifications SET read = TRUE WHERE id = $1", str(notification_id))
+
+
+async def save_validation_metrics(
+    option_id: UUID | str,
+    method_result_id: UUID | str,
+    absolute_error: float,
+    mape: float,
+    market_deviation: float,
+) -> None:
+    """Save validation metrics for a pricing result."""
+    async with acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO validation_metrics (option_id, method_result_id, absolute_error, mape, market_deviation)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (option_id, method_result_id) DO UPDATE 
+            SET absolute_error = EXCLUDED.absolute_error, mape = EXCLUDED.mape, market_deviation = EXCLUDED.market_deviation
+            """,
+            str(option_id),
+            str(method_result_id),
+            absolute_error,
+            mape,
+            market_deviation,
+        )
+
+
+async def save_scrape_error(
+    scrape_run_id: UUID | str,
+    url: str,
+    error_type: str,
+    error_message: str,
+    attempt: int = 1,
+) -> None:
+    """Log a scrape error."""
+    async with acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO scrape_errors (scrape_run_id, url, error_type, error_message, attempt)
+            VALUES ($1, $2, $3, $4, $5)
+            """,
+            str(scrape_run_id),
+            url,
+            error_type,
+            error_message,
+            attempt,
+        )
+
+
+async def get_recent_scrape_runs(limit: int = 10) -> list[dict[str, Any]]:
+    """Fetch recent scrape runs."""
+    async with acquire() as conn:
+        rows = await conn.fetch("SELECT * FROM scrape_runs ORDER BY started_at DESC LIMIT $1", limit)
+        return [dict(row) for row in rows]
+
+
+async def save_feature_snapshot(
+    snapshot_date: date, features: dict[str, Any], option_count: int
+) -> None:
+    """Save a feature snapshot for MLOps lineage."""
+    async with acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO feature_snapshots (snapshot_date, features, option_count)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (snapshot_date) DO UPDATE 
+            SET features = EXCLUDED.features, option_count = EXCLUDED.option_count
+            """,
+            snapshot_date,
+            json.dumps(features),
+            option_count,
+        )
+
+
+async def get_latest_feature_snapshot() -> dict[str, Any] | None:
+    """Fetch the latest feature snapshot."""
+    async with acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM feature_snapshots ORDER BY snapshot_date DESC LIMIT 1")
+        return dict(row) if row else None
+
+
+async def get_all_experiments() -> list[dict[str, Any]]:
+    """Fetch all experiments from ml_experiments table."""
+    async with acquire() as conn:
+        rows = await conn.fetch("SELECT * FROM ml_experiments ORDER BY created_at DESC")
+        return [dict(row) for row in rows]
+
+
+async def get_experiment_by_id(exp_id: UUID | str) -> dict[str, Any] | None:
+    """Fetch a specific experiment by its UUID."""
+    async with acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM ml_experiments WHERE id = $1", str(exp_id))
+        return dict(row) if row else None
+
+
+async def get_option_parameters(opt_id: UUID | str) -> dict[str, Any] | None:
+    """Fetch option parameters by UUID."""
+    async with acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM option_parameters WHERE id = $1", str(opt_id))
+        return dict(row) if row else None

@@ -18,7 +18,7 @@ storage = StorageService()
 
 @router.post("/export")
 async def export_data(
-    format: str = Query("csv", regex="^(csv|json)$"),
+    format: str = Query("csv", pattern="^(csv|json)$"),
     method_type: str | None = None,
     market_source: str | None = None,
     user: dict[str, Any] = Depends(get_current_user),

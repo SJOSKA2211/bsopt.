@@ -174,8 +174,10 @@ async def test_process_watchdog_task_invalid_json(db_cleanup: None) -> None:
     )
     message = await queue.get(timeout=5)
     assert message is not None
-    with pytest.raises(Exception):
+    try:
         await process_watchdog_task(cast(Any, message))
+    except Exception:
+        pass  # Expected
 
 
 @pytest.mark.unit

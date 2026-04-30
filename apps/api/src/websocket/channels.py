@@ -70,4 +70,4 @@ async def start_redis_pubsub_listener() -> None:
         logger.error("redis_pubsub_listener_failed", error=str(exc))
     finally:
         await pubsub.unsubscribe()
-        await pubsub.close()
+        await pubsub.aclose()

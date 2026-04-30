@@ -16,6 +16,7 @@ logger = structlog.get_logger(__name__)
 
 async def process_watchdog_task(message: IncomingMessage) -> None:
     """Callback for processing watchdog file drop tasks."""
+    error = None
     async with message.process():
         try:
             body = message.body
@@ -42,6 +43,11 @@ async def process_watchdog_task(message: IncomingMessage) -> None:
         except Exception as exc:
             RABBITMQ_CONSUMED.labels(queue="bs.watchdog", status="error").inc()
             logger.error("consumer_task_failed", error=str(exc))
+            error = exc
+            raise
+
+    if error:
+        raise error
 
 
 async def start_consumers() -> None:
