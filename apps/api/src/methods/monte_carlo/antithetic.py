@@ -1,66 +1,49 @@
-"""Monte Carlo with Antithetic Variates."""
+"""Antithetic Variates Monte Carlo pricing."""
 
 from __future__ import annotations
 
-import math
-from typing import Any
+import time
 
 import numpy as np
 
 from src.methods.base import BasePricer, OptionParams, PricingResult
-from src.metrics import PRICE_COMPUTATIONS_TOTAL, PRICE_DURATION_SECONDS
 
 
 class AntitheticMonteCarlo(BasePricer):
-    """Monte Carlo with Antithetic Variates for variance reduction."""
+    """Monte Carlo pricer using antithetic variates for variance reduction."""
 
-    def __init__(self, num_paths: int = 100_000, seed: int | None = 42) -> None:
-        # Ensure even number of paths for pairs
-        self.num_paths = (num_paths // 2) * 2
-        self.seed = seed
+    def price(self, params: OptionParams, num_paths: int = 50000) -> PricingResult:
+        start_time = time.perf_counter()
 
-    def price(self, params: OptionParams, **kwargs: Any) -> PricingResult:
-        start = self._start_timer()
+        # Ensure num_paths is even for pairs
+        if num_paths % 2 != 0:
+            num_paths += 1
 
-        S0 = params.underlying_price
+        S = params.underlying_price
         K = params.strike_price
-        T = params.time_to_maturity
+        T = params.time_to_expiry
         sigma = params.volatility
         r = params.risk_free_rate
 
-        if self.seed is not None:
-            np.random.seed(self.seed)
+        rng = np.random.default_rng()
+        z = rng.standard_normal(num_paths // 2)
 
-        num_pairs = self.num_paths // 2
-        z = np.random.standard_normal(num_pairs)
+        # Combine Z and -Z
+        z_antithetic = np.concatenate([z, -z])
 
-        # S(T) with Z and -Z
-        drift = (r - 0.5 * sigma**2) * T
-        diffusion = sigma * math.sqrt(T)
+        ST = S * np.exp((r - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * z_antithetic)
 
-        ST1 = S0 * np.exp(drift + diffusion * z)
-        ST2 = S0 * np.exp(drift + diffusion * (-z))
+        payoffs = np.maximum(ST - K, 0) if params.option_type == "call" else np.maximum(K - ST, 0)
 
-        is_call = {"call": 1.0, "put": 0.0}[params.option_type]
-        payoffs1 = is_call * np.maximum(ST1 - K, 0) + (1.0 - is_call) * np.maximum(K - ST1, 0)
-        payoffs2 = is_call * np.maximum(ST2 - K, 0) + (1.0 - is_call) * np.maximum(K - ST2, 0)
+        # Average the pairs
+        payoffs_combined = (payoffs[: num_paths // 2] + payoffs[num_paths // 2 :]) / 2
 
-        # Average payoffs per pair first
-        pair_payoffs = 0.5 * (payoffs1 + payoffs2)
-        discounted_payoffs = math.exp(-r * T) * pair_payoffs
+        price = np.mean(payoffs_combined) * np.exp(-r * T)
+        std_err = np.std(payoffs_combined) / np.sqrt(num_paths // 2)
 
-        price = np.mean(discounted_payoffs)
-        std_err = np.std(discounted_payoffs) / math.sqrt(num_pairs)
+        exec_time = time.perf_counter() - start_time
+        result = self._create_result(params, float(price), exec_time=exec_time)
+        result.parameter_set["std_err"] = float(std_err)
+        result.parameter_set["num_paths"] = num_paths
 
-        exec_time = self._stop_timer(start)
-        PRICE_COMPUTATIONS_TOTAL.labels(
-            method_type="antithetic_mc", option_type=params.option_type, converged="true"
-        ).inc()
-        PRICE_DURATION_SECONDS.labels(method_type="antithetic_mc").observe(exec_time)
-
-        return PricingResult(
-            method_type="antithetic_mc",
-            computed_price=float(price),
-            exec_seconds=exec_time,
-            parameter_set={"num_paths": self.num_paths, "num_pairs": num_pairs, "std_err": std_err},
-        )
+        return result

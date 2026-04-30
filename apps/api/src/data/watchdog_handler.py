@@ -14,7 +14,7 @@ from src.metrics import WATCHDOG_FILES_DETECTED
 from src.queue.publisher import publish_watchdog_task
 
 logger = structlog.get_logger(__name__)
-SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({".csv", ".json"})
+SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({".csv", ".json", ".gz"})
 
 _active_tasks: set[asyncio.Task[Any]] = set()
 
@@ -26,7 +26,14 @@ class BsoptFileHandler(FileSystemEventHandler):
         if not isinstance(event, FileCreatedEvent) or event.is_directory:
             return
         path = Path(str(event.src_path))
-        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+        ext = path.suffix.lower()
+
+        # For .gz, check the underlying extension if possible
+        if ext == ".gz":
+            underlying_ext = Path(path.stem).suffix.lower()
+            if underlying_ext not in {".csv", ".json", ""}:  # Allow bare .gz too
+                return
+        elif ext not in SUPPORTED_EXTENSIONS:
             return
         market = _detect_market(path.name)
         WATCHDOG_FILES_DETECTED.labels(market=market, extension=path.suffix).inc()

@@ -1,102 +1,65 @@
-"""Crank-Nicolson Finite Difference Method."""
+"""Crank-Nicolson Finite Difference Method for option pricing."""
 
 from __future__ import annotations
 
-from typing import Any
+import time
 
 import numpy as np
 
 from src.methods.base import BasePricer, OptionParams, PricingResult
 from src.methods.finite_difference.implicit import ImplicitFDM
-from src.metrics import PRICE_COMPUTATIONS_TOTAL, PRICE_DURATION_SECONDS
 
 
 class CrankNicolsonFDM(BasePricer):
-    """Crank-Nicolson Finite Difference Method (theta = 0.5)."""
+    """Crank-Nicolson FDM solver (theta=0.5). Reuses Thomas algorithm from ImplicitFDM."""
 
-    def __init__(self, s_max_mult: float = 3.0, m: int = 100, n: int = 100) -> None:
-        self.s_max_mult = s_max_mult
-        self.m = m
-        self.n = n
+    def price(self, params: OptionParams, m_steps: int = 100, n_steps: int = 1000) -> PricingResult:
+        start_time = time.perf_counter()
 
-    def price(self, params: OptionParams, **kwargs: Any) -> PricingResult:
-        start = self._start_timer()
+        S_max = 2.0 * params.strike_price
+        dt = params.time_to_expiry / n_steps
 
-        S0 = params.underlying_price
-        K = params.strike_price
-        T = params.time_to_maturity
-        sigma = params.volatility
-        r = params.risk_free_rate
+        S_values = np.linspace(0, S_max, m_steps + 1)
 
-        S_max = K * self.s_max_mult
-        dt = T / self.n
+        grid = (
+            np.maximum(S_values - params.strike_price, 0)
+            if params.option_type == "call"
+            else np.maximum(params.strike_price - S_values, 0)
+        )
 
-        S_values = np.linspace(0, S_max, self.m + 1)
-        grid = np.zeros(self.m + 1)
+        j = np.arange(1, m_steps)
 
-        if params.option_type == "call":
-            grid = np.maximum(S_values - K, 0)
-        else:
-            grid = np.maximum(K - S_values, 0)
+        # Matrix coefficients (Theta = 0.5)
+        # Left-hand side coefficients
+        alpha_L = 0.25 * dt * (params.risk_free_rate * j - (params.volatility**2) * (j**2))
+        beta_L = 1.0 + 0.5 * dt * ((params.volatility**2) * (j**2) + params.risk_free_rate)
+        gamma_L = 0.25 * dt * (-params.risk_free_rate * j - (params.volatility**2) * (j**2))
 
-        j = np.arange(1, self.m)
-        # CN coefficients (theta=0.5)
-        # alpha_j * f_{j-1, i} + (1 + beta_j) * f_{j, i} + gamma_j * f_{j+1, i} = RHS
-        # where alpha_j = -dt/4 * (sigma^2*j^2 - r*j)
-        #       beta_j = dt/2 * (sigma^2*j^2 + r)
-        #       gamma_j = -dt/4 * (sigma^2*j^2 + r*j)
+        # Right-hand side coefficients
+        alpha_R = -alpha_L
+        beta_R = 1.0 - 0.5 * dt * ((params.volatility**2) * (j**2) + params.risk_free_rate)
+        gamma_R = -gamma_L
 
-        alpha = 0.25 * dt * (sigma**2 * j**2 - r * j)
-        beta = 0.5 * dt * (sigma**2 * j**2 + r)
-        gamma = 0.25 * dt * (sigma**2 * j**2 + r * j)
-
-        a = -alpha[1:]
-        b = 1.0 + beta
-        c = -gamma[:-1]
-
-        for i in range(self.n):
-            # RHS: (1 - beta) * f_j + alpha * f_{j-1} + gamma * f_{j+1}
-            d = (
-                (1.0 - beta) * grid[1 : self.m]
-                + alpha * grid[0 : self.m - 1]
-                + gamma * grid[2 : self.m + 1]
-            )
-
-            # Boundary contributions
-            if params.option_type == "call":
-                # Average boundary between i and i+1
-                b_val = 0.5 * (
-                    (S_max - K * np.exp(-r * (T - i * dt)))
-                    + (S_max - K * np.exp(-r * (T - (i + 1) * dt)))
-                )
-                d[-1] += gamma[-1] * b_val
-            else:
-                b_val = 0.5 * (
-                    (K * np.exp(-r * (T - i * dt))) + (K * np.exp(-r * (T - (i + 1) * dt)))
-                )
-                d[0] += alpha[0] * b_val
-
-            grid[1 : self.m] = ImplicitFDM._thomas_algorithm(a, b, c, d)
-
-            # Update boundaries
+        for _ in range(n_steps):
+            # Boundary conditions at each step
             if params.option_type == "call":
                 grid[0] = 0
-                grid[self.m] = S_max - K * np.exp(-r * (T - (i + 1) * dt))
+                grid[m_steps] = S_max - params.strike_price * np.exp(-params.risk_free_rate * _)
             else:
-                grid[0] = K * np.exp(-r * (T - (i + 1) * dt))
-                grid[self.m] = 0
+                grid[0] = params.strike_price * np.exp(-params.risk_free_rate * _)
+                grid[m_steps] = 0
 
-        price = np.interp(S0, S_values, grid)
-        exec_time = self._stop_timer(start)
+            # Right-hand side calculation
+            b = (
+                alpha_R * grid[0 : m_steps - 1]
+                + beta_R * grid[1:m_steps]
+                + gamma_R * grid[2 : m_steps + 1]
+            )
 
-        PRICE_COMPUTATIONS_TOTAL.labels(
-            method_type="crank_nicolson", option_type=params.option_type, converged="true"
-        ).inc()
-        PRICE_DURATION_SECONDS.labels(method_type="crank_nicolson").observe(exec_time)
+            # Solve tridiagonal system using ImplicitFDM helper
+            grid[1:m_steps] = ImplicitFDM._thomas_algorithm(alpha_L, beta_L, gamma_L, b)
 
-        return PricingResult(
-            method_type="crank_nicolson",
-            computed_price=float(price),
-            exec_seconds=exec_time,
-            parameter_set={"m": self.m, "n": self.n},
-        )
+        price = np.interp(params.underlying_price, S_values, grid)
+
+        exec_time = time.perf_counter() - start_time
+        return self._create_result(params, float(price), exec_time=exec_time)

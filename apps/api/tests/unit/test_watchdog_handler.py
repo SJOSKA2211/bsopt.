@@ -69,3 +69,14 @@ def test_handler_case_insensitivity(tmp_path: Path) -> None:
     thread = threading.Thread(target=handler.on_created, args=(FileCreatedEvent(str(test_file)),))
     thread.start()
     thread.join()
+
+
+@pytest.mark.unit
+def test_handler_supports_gz_files(tmp_path: Path) -> None:
+    """Verify that .gz files are supported."""
+    handler = BsoptFileHandler()
+    test_file = tmp_path / "spy_data.csv.gz"
+    test_file.write_text("dummy")
+    thread = threading.Thread(target=handler.on_created, args=(FileCreatedEvent(str(test_file)),))
+    thread.start()
+    thread.join()

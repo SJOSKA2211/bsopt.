@@ -40,7 +40,7 @@ def test_option_parameter_validation_missing_fields():
             
         with pytest.raises(ValidationError) as excinfo:
             validate_option_parameters(data)
-        assert f"Missing required field: {field}" in str(excinfo.value.context["errors"])
+        assert f"Missing required field: {field}" in str(excinfo.value.details["errors"])
 
 @pytest.mark.unit
 def test_option_parameter_validation_invalid_values():
@@ -68,7 +68,7 @@ def test_option_parameter_validation_invalid_values():
         data[field] = value
         with pytest.raises(ValidationError) as excinfo:
             validate_option_parameters(data)
-        assert expected_msg in str(excinfo.value.context["errors"])
+        assert expected_msg in str(excinfo.value.details["errors"])
 
 @pytest.mark.unit
 def test_option_parameter_multi_error_collection():
@@ -79,7 +79,7 @@ def test_option_parameter_multi_error_collection():
     }
     with pytest.raises(ValidationError) as excinfo:
         validate_option_parameters(data)
-    errors = excinfo.value.context["errors"]
+    errors = excinfo.value.details["errors"]
     assert len(errors) > 1
     assert any("underlying_price" in e for e in errors)
     assert any("volatility" in e for e in errors)
@@ -93,12 +93,12 @@ def test_market_data_validation():
     # Bid > Ask
     with pytest.raises(ValidationError) as excinfo:
         validate_market_data({"bid": 11.0, "ask": 10.5})
-    assert "Bid cannot be greater than ask" in str(excinfo.value.context["errors"])
+    assert "Bid cannot be greater than ask" in str(excinfo.value.details["errors"])
     
     # Negative volume
     with pytest.raises(ValidationError) as excinfo:
         validate_market_data({"volume": -10})
-    assert "Volume cannot be negative" in str(excinfo.value.context["errors"])
+    assert "Volume cannot be negative" in str(excinfo.value.details["errors"])
     
     # None values (should be ignored or handled)
     validate_market_data({"bid": None, "ask": 10.0})

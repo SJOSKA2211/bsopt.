@@ -67,3 +67,14 @@ async def acquire() -> AsyncIterator[asyncpg.Connection]:
         raise
     finally:
         NEON_QUERY_DURATION.labels(operation="acquire").observe(time.perf_counter() - start)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def test_conn() -> None:
+        async with acquire() as conn:
+            val = await conn.fetchval("SELECT 1")
+            print(f"NeonDB Connection Test: {val}")
+
+    asyncio.run(test_conn())

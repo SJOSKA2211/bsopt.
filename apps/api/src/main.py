@@ -39,8 +39,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Lifecycle management for infrastructure connections."""
     settings = get_settings()
 
-    # 1. Initialize DB Pool
-    await get_pool()
+    # 1. Initialize DB Pool (non-blocking failure)
+    try:
+        await get_pool()
+    except Exception as exc:
+        logger.error("db_connection_failed_at_startup", error=str(exc))
 
     # 2. Start Redis Pub/Sub listener for WebSockets (runs in background)
     pubsub_task = asyncio.create_task(start_redis_pubsub_listener())

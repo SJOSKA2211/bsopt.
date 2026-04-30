@@ -1,82 +1,55 @@
-"""Boyle (1988) Trinomial Tree for smoother convergence."""
+"""Trinomial Tree pricing method (Boyle 1988)."""
 
 from __future__ import annotations
-
-import math
-from typing import Any
 
 import numpy as np
 
 from src.methods.base import BasePricer, OptionParams, PricingResult
-from src.metrics import PRICE_COMPUTATIONS_TOTAL, PRICE_DURATION_SECONDS
 
 
 class TrinomialTree(BasePricer):
+    """Trinomial Tree with smoother convergence than binomial."""
 
-    def __init__(self, steps: int = 500, is_american: bool = False) -> None:
-        self.steps = steps
-        self.is_american = is_american
+    def price(self, params: OptionParams, num_steps: int = 500) -> PricingResult:
+        start_time = self._start_timer()
 
-    def price(self, params: OptionParams, **kwargs: Any) -> PricingResult:
-        start = self._start_timer()
-
-        S0 = params.underlying_price
+        S = params.underlying_price
         K = params.strike_price
-        T = params.time_to_maturity
+        T = params.time_to_expiry
         sigma = params.volatility
         r = params.risk_free_rate
-        dt = T / self.steps
+        dt = T / num_steps
 
-        # Trinomial parameters (Boyle 1988)
-        u = math.exp(sigma * math.sqrt(2 * dt))
+        dx = sigma * np.sqrt(3 * dt)
+        u = np.exp(dx)
 
-        # Risk-neutral probabilities
-        p_u = (
-            (math.exp(r * dt / 2) - math.exp(-sigma * math.sqrt(dt / 2)))
-            / (math.exp(sigma * math.sqrt(dt / 2)) - math.exp(-sigma * math.sqrt(dt / 2)))
-        ) ** 2
-        p_d = (
-            (math.exp(sigma * math.sqrt(dt / 2)) - math.exp(r * dt / 2))
-            / (math.exp(sigma * math.sqrt(dt / 2)) - math.exp(-sigma * math.sqrt(dt / 2)))
-        ) ** 2
-        p_m = 1.0 - (p_u + p_d)
+        # Probabilities (Boyle / Hull-White)
+        nu = r - 0.5 * sigma**2
+        common = (sigma**2 * dt + nu**2 * dt**2) / (dx**2)
+        drift = nu * dt / dx
 
-        df = math.exp(-r * dt)
+        pu = 0.5 * (common + drift)
+        pd = 0.5 * (common - drift)
+        pm = 1.0 - pu - pd
 
-        # Terminal node prices: S0 * u^j where j ranges from -steps to +steps
-        j = np.arange(-self.steps, self.steps + 1)
-        prices = S0 * (u**j)
+        # Final nodes: 2*num_steps + 1
+        j = np.arange(2 * num_steps + 1) - num_steps
+        S_values = S * (u**j)
 
         if params.option_type == "call":
-            values = np.maximum(prices - K, 0)
+            grid = np.maximum(S_values - K, 0)
         else:
-            values = np.maximum(K - prices, 0)
+            grid = np.maximum(K - S_values, 0)
 
-        # Backward induction
-        for i in range(self.steps - 1, -1, -1):
-            values = df * (p_d * values[0:-2] + p_m * values[1:-1] + p_u * values[2:])
+        df = np.exp(-r * dt)
 
-            if self.is_american:
-                j_vals = np.arange(-i, i + 1)
-                s_vals = S0 * (u**j_vals)
-                if params.option_type == "call":
-                    exercise = np.maximum(s_vals - K, 0)
-                else:
-                    exercise = np.maximum(K - s_vals, 0)
-                values = np.maximum(values, exercise)
+        for _ in range(num_steps):
+            grid = df * (pu * grid[2:] + pm * grid[1:-1] + pd * grid[:-2])
 
-        price = values[0]
-        exec_time = self._stop_timer(start)
+        price = grid[0]
 
-        m_type = "trinomial_american" if self.is_american else "trinomial"
-        PRICE_COMPUTATIONS_TOTAL.labels(
-            method_type=m_type, option_type=params.option_type, converged="true"
-        ).inc()
-        PRICE_DURATION_SECONDS.labels(m_type).observe(exec_time)
+        exec_time = self._stop_timer(start_time)
+        result = self._create_result(params, float(price), exec_time=exec_time)
+        result.parameter_set["num_steps"] = num_steps
 
-        return PricingResult(
-            method_type=m_type,
-            computed_price=float(price),
-            exec_seconds=exec_time,
-            parameter_set={"steps": self.steps, "is_american": self.is_american},
-        )
+        return result

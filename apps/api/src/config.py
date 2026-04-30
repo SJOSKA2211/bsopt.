@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     )
 
     # Redis
-    redis_url: str = "redis://redis:7379/0"
+    redis_url: str = "redis://redis:6379/0"
     redis_password: str = "placeholder_redis_pass_20_chars"
 
     # RabbitMQ

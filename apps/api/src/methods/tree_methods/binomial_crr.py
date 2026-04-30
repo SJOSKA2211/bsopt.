@@ -1,75 +1,62 @@
-"""Cox-Ross-Rubinstein Binomial Tree for European and American options."""
+"""Cox-Ross-Rubinstein Binomial Tree for European/American options."""
 
 from __future__ import annotations
-
-import math
-from typing import Any
 
 import numpy as np
 
 from src.methods.base import BasePricer, OptionParams, PricingResult
-from src.metrics import PRICE_COMPUTATIONS_TOTAL, PRICE_DURATION_SECONDS
 
 
 class BinomialCRR(BasePricer):
+    """CRR Binomial Tree with O(n) memory efficiency."""
 
-    def __init__(self, steps: int = 1000, is_american: bool = False) -> None:
-        self.steps = steps
-        self.is_american = is_american
+    def price(
+        self, params: OptionParams, num_steps: int = 1000, american: bool = False
+    ) -> PricingResult:
+        start_time = self._start_timer()
 
-    def price(self, params: OptionParams, **kwargs: Any) -> PricingResult:
-        start = self._start_timer()
-
-        S0 = params.underlying_price
+        S = params.underlying_price
         K = params.strike_price
-        T = params.time_to_maturity
+        T = params.time_to_expiry
         sigma = params.volatility
         r = params.risk_free_rate
-        dt = T / self.steps
+        dt = T / num_steps
 
-        # CRR parameters
-        u = math.exp(sigma * math.sqrt(dt))
+        u = np.exp(sigma * np.sqrt(dt))
         d = 1.0 / u
-        p = (math.exp(r * dt) - d) / (u - d)
-        df = math.exp(-r * dt)
+        q = (np.exp(r * dt) - d) / (u - d)
+        df = np.exp(-r * dt)
 
-        # Initialize terminal payoffs
-        # j-th node at time N has price S0 * u^j * d^(N-j)
-        j = np.arange(self.steps + 1)
-        prices = S0 * (u**j) * (d ** (self.steps - j))
+        # Final state prices
+        # nodes at step N: S * u^j * d^(N-j) = S * u^(2j-N)
+        j = np.arange(num_steps + 1)
+        S_values = S * (u ** (2 * j - num_steps))
 
         if params.option_type == "call":
-            values = np.maximum(prices - K, 0)
+            grid = np.maximum(S_values - K, 0)
         else:
-            values = np.maximum(K - prices, 0)
+            grid = np.maximum(K - S_values, 0)
 
         # Backward induction
-        for i in range(self.steps - 1, -1, -1):
-            # Compute expected values at time i
-            values = df * (p * values[1 : i + 2] + (1 - p) * values[0 : i + 1])
+        for i in range(num_steps - 1, -1, -1):
+            grid = df * (q * grid[1:] + (1 - q) * grid[:-1])
 
-            # American early exercise check
-            if self.is_american:
+            if american:
+                # Early exercise check
                 j_i = np.arange(i + 1)
-                S_i = S0 * (u**j_i) * (d ** (i - j_i))
-                if params.option_type == "call":
-                    exercise = np.maximum(S_i - K, 0)
-                else:
-                    exercise = np.maximum(K - S_i, 0)
-                values = np.maximum(values, exercise)
+                S_i = S * (u ** (2 * j_i - i))
+                exercise = (
+                    np.maximum(S_i - K, 0)
+                    if params.option_type == "call"
+                    else np.maximum(K - S_i, 0)
+                )
+                grid = np.maximum(grid, exercise)
 
-        price = values[0]
-        exec_time = self._stop_timer(start)
+        price = grid[0]
 
-        m_type = "binomial_american" if self.is_american else "binomial_crr"
-        PRICE_COMPUTATIONS_TOTAL.labels(
-            method_type=m_type, option_type=params.option_type, converged="true"
-        ).inc()
-        PRICE_DURATION_SECONDS.labels(method_type=m_type).observe(exec_time)
+        exec_time = self._stop_timer(start_time)
+        result = self._create_result(params, float(price), exec_time=exec_time)
+        result.parameter_set["num_steps"] = num_steps
+        result.parameter_set["american"] = american
 
-        return PricingResult(
-            method_type=m_type,
-            computed_price=float(price),
-            exec_seconds=exec_time,
-            parameter_set={"steps": self.steps, "is_american": self.is_american},
-        )
+        return result

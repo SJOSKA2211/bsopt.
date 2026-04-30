@@ -1,67 +1,57 @@
-"""Standard Monte Carlo pricing."""
+"""Standard Monte Carlo pricing for European options."""
 
 from __future__ import annotations
 
-import math
-from typing import Any
+import time
+from typing import cast
 
 import numpy as np
+from scipy.stats import norm
 
 from src.methods.base import BasePricer, OptionParams, PricingResult
-from src.metrics import PRICE_COMPUTATIONS_TOTAL, PRICE_DURATION_SECONDS
 
 
 class StandardMonteCarlo(BasePricer):
-    """Standard Monte Carlo for European options using exact GBM simulation."""
+    """Vectorized standard Monte Carlo pricer."""
 
-    def __init__(self, num_paths: int = 100_000, seed: int | None = 42) -> None:
-        self.num_paths = num_paths
-        self.seed = seed
+    def price(self, params: OptionParams, num_paths: int = 100000) -> PricingResult:
+        start_time = time.perf_counter()
 
-    def price(self, params: OptionParams, **kwargs: Any) -> PricingResult:
-        start = self._start_timer()
-
-        S0 = params.underlying_price
+        S = params.underlying_price
         K = params.strike_price
-        T = params.time_to_maturity
+        T = params.time_to_expiry
         sigma = params.volatility
         r = params.risk_free_rate
 
-        if self.seed is not None:
-            np.random.seed(self.seed)
-
-        # Exact solution of GBM at time T
-        # S(T) = S0 * exp((r - 0.5*sigma^2)*T + sigma*sqrt(T)*Z)
-        z = np.random.standard_normal(self.num_paths)
-        ST = S0 * np.exp((r - 0.5 * sigma**2) * T + sigma * math.sqrt(T) * z)
+        # Exact log-normal simulation
+        rng = np.random.default_rng()
+        z = rng.standard_normal(num_paths)
+        ST = S * np.exp((r - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * z)
 
         payoffs = np.maximum(ST - K, 0) if params.option_type == "call" else np.maximum(K - ST, 0)
 
-        discounted_payoffs = math.exp(-r * T) * payoffs
-        price = np.mean(discounted_payoffs)
-        std_err = np.std(discounted_payoffs) / math.sqrt(self.num_paths)
+        price = np.mean(payoffs) * np.exp(-r * T)
+        std_err = np.std(payoffs) / np.sqrt(num_paths)
 
-        exec_time = self._stop_timer(start)
-        PRICE_COMPUTATIONS_TOTAL.labels(
-            method_type="standard_mc", option_type=params.option_type, converged="true"
-        ).inc()
-        PRICE_DURATION_SECONDS.labels(method_type="standard_mc").observe(exec_time)
+        exec_time = time.perf_counter() - start_time
+        result = self._create_result(params, float(price), exec_time=exec_time)
+        result.parameter_set["std_err"] = float(std_err)
+        result.parameter_set["num_paths"] = num_paths
+        result.parameter_set["ci_width"] = float(1.96 * std_err)
 
-        return PricingResult(
-            method_type="standard_mc",
-            computed_price=float(price),
-            exec_seconds=exec_time,
-            parameter_set={
-                "num_paths": self.num_paths,
-                "std_err": std_err,
-                "confidence_interval_95": 1.96 * std_err,
-            },
-        )
+        return result
 
     def price_with_confidence_interval(
-        self, params: OptionParams, confidence: float = 0.95
-    ) -> tuple[float, float]:
-        """Return (price, ci_width)."""
-        res = self.price(params)
-        # For simplicity, we just return the width from the parameter_set
-        return res.computed_price, res.parameter_set["confidence_interval_95"]
+        self, params: OptionParams, num_paths: int = 100000, confidence: float = 0.95
+    ) -> dict[str, float]:
+        """Compute price and the width of the confidence interval."""
+        res = self.price(params, num_paths)
+        z_score = norm.ppf(1 - (1 - confidence) / 2)
+        std_err = cast("float", res.parameter_set["std_err"])
+        ci_width = z_score * std_err
+        return {
+            "price": res.computed_price,
+            "ci_lower": res.computed_price - ci_width,
+            "ci_upper": res.computed_price + ci_width,
+            "ci_width": ci_width,
+        }

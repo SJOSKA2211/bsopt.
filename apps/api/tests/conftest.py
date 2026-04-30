@@ -19,6 +19,7 @@ os.environ["RABBITMQ_URL"] = "amqp://bsopt_user:placeholder_rabbitmq_password_20
 os.environ["MINIO_ENDPOINT"] = "http://localhost:9000"
 os.environ["RAY_ADDRESS"] = ""
 os.environ["MLFLOW_TRACKING_URI"] = "http://localhost:5000"
+os.environ["NEON_CONNECTION_STRING"] = "postgresql://neondb_owner:npg_imM05wPNOUX8@localhost:5432/neondb"
 os.environ["WATCHDOG_WATCH_DIR"] = "/tmp/bsopt_watch"
 
 from src.main import app
