@@ -54,4 +54,20 @@ async def send_push_notification(n: Notification) -> bool:
         except Exception as exc:
             logger.error("push_exception", user_id=n.user_id, error=str(exc))
 
-    return success_count > 0
+async def send_web_push(subscription_info: Any, title: str, body: str) -> bool:
+    """Utility to send a direct web push."""
+    import os
+    private_key = os.environ.get("VAPID_PRIVATE_KEY")
+    if not private_key:
+        return False
+    try:
+        webpush(
+            subscription_info=subscription_info if not isinstance(subscription_info, str) else json.loads(subscription_info),
+            data=json.dumps({"title": title, "body": body}),
+            vapid_private_key=private_key,
+            vapid_claims={"sub": "mailto:admin@example.com"}
+        )
+        return True
+    except Exception as exc:
+        logger.error("web_push_utility_failed", error=str(exc))
+        return False

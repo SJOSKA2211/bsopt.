@@ -53,3 +53,22 @@ async def send_email_notification(n: Notification) -> bool:
     except Exception as exc:
         logger.error("email_exception", error=str(exc))
         return False
+
+
+async def send_transactional_email(to: str, subject: str, body: str) -> bool:
+    """Utility to send a direct transactional email."""
+    import os
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        return False
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={"from": "onboarding@resend.dev", "to": [to], "subject": subject, "html": body}
+            )
+            return response.status_code == 201
+    except Exception as exc:
+        logger.error("transactional_email_failed", error=str(exc))
+        return False

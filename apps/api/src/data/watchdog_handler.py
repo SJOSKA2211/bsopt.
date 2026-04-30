@@ -64,6 +64,7 @@ def _detect_market(filename: str) -> str:
 
 def start_watchdog(watch_directory: str) -> Any:
     """Initialize and start the watchdog observer."""
+    Path(watch_directory).mkdir(parents=True, exist_ok=True)
     observer = Observer()
     observer.schedule(BsoptFileHandler(), watch_directory, recursive=False)
     observer.start()
