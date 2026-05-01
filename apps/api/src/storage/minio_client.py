@@ -13,7 +13,7 @@ logger = structlog.get_logger(__name__)
 _session = aioboto3.Session()
 
 
-def get_minio_client() -> Any:
+def get_minio() -> Any:
     """Return an async context manager for MinIO client."""
     settings = get_settings()
     return _session.client(

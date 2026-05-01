@@ -118,26 +118,27 @@ class BlackScholesAnalytical(BasePricer):
         volatility = params.volatility
         risk_free_rate = params.risk_free_rate
 
-        # Adjusted volatility and drift for geometric average
-        vol_adj = volatility / np.sqrt(3.0)
-        rho_adj = 0.5 * (risk_free_rate - 0.5 * (volatility**2 - (vol_adj**2)))
+        # Correct Kemna & Vorst (1990) parameters for continuous geometric average
+        # m = E[ln(G)] = ln(S) + 0.5 * (r - 0.5 * sigma^2) * T
+        # v^2 = Var(ln(G)) = sigma^2 * T / 3
+        mu_adj = 0.5 * (risk_free_rate - 0.5 * volatility**2)
+        var_total = (volatility**2 * time_to_expiry) / 3.0
 
         d1 = (
-            np.log(underlying_price / strike_price) + (rho_adj + 0.5 * vol_adj**2) * time_to_expiry
-        ) / (vol_adj * np.sqrt(time_to_expiry))
-        d2 = d1 - vol_adj * np.sqrt(time_to_expiry)
+            np.log(underlying_price / strike_price) + mu_adj * time_to_expiry + var_total
+        ) / np.sqrt(var_total)
+        d2 = d1 - np.sqrt(var_total)
 
         if params.option_type == "call":
-            price = underlying_price * np.exp(
-                (rho_adj - risk_free_rate) * time_to_expiry
-            ) * norm.cdf(d1) - strike_price * np.exp(-risk_free_rate * time_to_expiry) * norm.cdf(
-                d2
+            price = np.exp(-risk_free_rate * time_to_expiry) * (
+                underlying_price * np.exp(mu_adj * time_to_expiry + 0.5 * var_total) * norm.cdf(d1)
+                - strike_price * norm.cdf(d2)
             )
         else:
-            price = strike_price * np.exp(-risk_free_rate * time_to_expiry) * norm.cdf(
-                -d2
-            ) - underlying_price * np.exp((rho_adj - risk_free_rate) * time_to_expiry) * norm.cdf(
-                -d1
+            price = np.exp(-risk_free_rate * time_to_expiry) * (
+                strike_price * norm.cdf(-d2)
+                - underlying_price
+                * np.exp(mu_adj * time_to_expiry + 0.5 * var_total)
+                * norm.cdf(-d1)
             )
-
         return float(price)

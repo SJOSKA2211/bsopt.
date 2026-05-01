@@ -32,6 +32,9 @@ REDIS_CACHE_HITS = Counter("bsopt_redis_cache_hits_total", "Total Redis cache hi
 REDIS_CACHE_MISSES = Counter(
     "bsopt_redis_cache_misses_total", "Total Redis cache misses", ["endpoint"]
 )
+REDIS_OPERATIONS_TOTAL = Counter(
+    "bsopt_redis_operations_total", "Total Redis operations", ["operation"]
+)
 
 # ── RabbitMQ ──────────────────────────────────────────────────────
 RABBITMQ_PUBLISHED = Counter(

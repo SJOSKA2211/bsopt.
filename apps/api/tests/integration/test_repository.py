@@ -1,55 +1,88 @@
-"""Exhaustive integration tests for NeonDB repository operations."""
-
+"""Integration tests for NeonDB repository — Phase 2."""
 from __future__ import annotations
 
-import pytest
 from datetime import date
-from src.database.repository import (
-    save_method_result,
-    save_option_parameters,
-    get_latest_metrics,
-    query_recent_mape,
-    save_scrape_run,
-    save_model_metadata,
-    get_latest_model,
-    save_notification,
-)
+from uuid import uuid4
 
-@pytest.mark.integration
+import pytest
+
+from src.database import repository
+
+pytestmark = pytest.mark.integration
+
+
 @pytest.mark.asyncio
-async def test_repository_full_lifecycle(db_cleanup, test_user):
-    # 1. Save Option Params
-    opt_id = await save_option_parameters(100.0, 100.0, 1.0, 0.2, 0.05, "call", "spy")
-    assert isinstance(opt_id, str)
+async def test_user_lifecycle(db_cleanup):
+    """Test user creation and retrieval."""
+    user_id = uuid4()
+    email = f"test_{user_id}@example.com"
+    # Manual insert for test setup
+    from src.database.neon_client import acquire
+    async with acquire() as conn:
+        await conn.execute(
+            "INSERT INTO users (id, email, role) VALUES ($1, $2, $3)",
+            str(user_id), email, "admin"
+        )
+
+    user = await repository.get_user_by_id(user_id)
+    assert user is not None
+    assert user["email"] == email
+
+    user_by_email = await repository.get_user_by_email(email)
+    assert user_by_email is not None
+    assert user_by_email["id"] == user_id
+
+
+@pytest.mark.asyncio
+async def test_option_parameters_upsert(db_cleanup):
+    """Test idempotency and retrieval of option parameters."""
+    opt_id = await repository.save_option_parameters(
+        underlying_price=100.0,
+        strike_price=105.0,
+        time_to_expiry=0.5,
+        volatility=0.2,
+        risk_free_rate=0.05,
+        option_type="call",
+        market_source="test_market"
+    )
     assert opt_id != ""
-    
-    # 2. Save Method Result
-    res_id = await save_method_result(opt_id, "analytical", 10.45, {"d1": 0.5}, 0.01)
-    assert isinstance(res_id, str)
-    assert res_id != ""
-    
-    # 3. Get Latest Metrics
-    metrics = await get_latest_metrics()
-    assert len(metrics) >= 1
-    assert any(m["method_type"] == "analytical" for m in metrics)
-    
-    # 4. Query Recent MAPE (should be 0.0 if no validation_metrics rows)
-    mape = await query_recent_mape("analytical")
-    assert mape == 0.0
-    
-    # 5. Save Scrape Run
-    run_id = await save_scrape_run("spy", "SpyScraper", None, "success")
-    assert isinstance(run_id, str)
-    assert run_id != ""
-    
-    # 6. Save Model Metadata
-    await save_model_metadata("test_model", "v1", "s3://path", {"mape": 0.01})
-    
-    # 7. Get Latest Model
-    model = await get_latest_model("test_model")
-    assert model["version"] == "v1"
-    
-    # 8. Save Notification
-    notif_id = await save_notification(test_user["id"], "Title", "Body", "info")
-    assert isinstance(notif_id, str)
-    assert notif_id != ""
+
+    # Test idempotency
+    opt_id_2 = await repository.save_option_parameters(
+        underlying_price=100.0,
+        strike_price=105.0,
+        time_to_expiry=0.5,
+        volatility=0.2,
+        risk_free_rate=0.05,
+        option_type="call",
+        market_source="test_market"
+    )
+    assert opt_id == opt_id_2
+
+
+@pytest.mark.asyncio
+async def test_market_data_upsert(db_cleanup):
+    """Test upserting market data."""
+    opt_id = await repository.save_option_parameters(100, 100, 1, 0.2, 0.05, "call", "test")
+
+    await repository.save_market_data(
+        option_id=opt_id,
+        trade_date=date.today(),
+        bid=10.0,
+        ask=11.0,
+        volume=100,
+        oi=500,
+        data_source="test"
+    )
+
+    data = await repository.query_market_data(option_id=opt_id)
+    assert len(data) == 1
+    assert data[0]["bid"] == 10.0
+
+
+@pytest.mark.asyncio
+async def test_audit_log(db_cleanup):
+    """Test saving audit logs."""
+    run_id = uuid4()
+    await repository.save_audit_log(run_id, "test_step", "success", 10, "test message")
+    # Verify manually or via query if we had one

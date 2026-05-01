@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
-from playwright.async_api import Page
+
+if TYPE_CHECKING:
+    from playwright.async_api import Page
 
 
 @pytest.mark.e2e
@@ -12,7 +16,7 @@ async def test_download_redirect_flow(page: Page) -> None:
     """Verify that download buttons trigger a presigned URL redirect."""
     try:
         await page.goto("http://localhost:3000/dashboard/experiments", timeout=5000)
-        
+
         # Click CSV download button
         # In a real test, we would mock or verify the redirect to MinIO
         # But here we check the UI trigger

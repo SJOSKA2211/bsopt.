@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
-from playwright.async_api import Page
+
+if TYPE_CHECKING:
+    from playwright.async_api import Page
 
 
 @pytest.mark.e2e
@@ -13,11 +17,11 @@ async def test_login_page_visual_contract(page: Page) -> None:
     # This requires the Next.js app to be running at :3000
     try:
         await page.goto("http://localhost:3000/login", timeout=5000)
-        
+
         # Check for authentication buttons
         await page.wait_for_selector("text=GitHub", timeout=2000)
         await page.wait_for_selector("text=Google", timeout=2000)
-        
+
         # Verify Framer Motion entrance (opacity should be 1 eventually)
         container = await page.query_selector("main")
         assert container is not None

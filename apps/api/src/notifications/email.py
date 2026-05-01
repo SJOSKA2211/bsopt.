@@ -22,7 +22,7 @@ async def send_email_notification(n: Notification) -> bool:
         logger.warning("resend_api_key_missing", user_id=n.user_id)
         return False
 
-    url = "https://api.resend.com/emails"
+    url = f"{settings.resend_base_url}/emails"
     headers = {
         "Authorization": f"Bearer {settings.resend_api_key}",
         "Content-Type": "application/json",
@@ -62,10 +62,14 @@ async def send_transactional_email(to: str, subject: str, body: str) -> bool:
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         return False
+
+    # For testing, we allow overriding the base URL via env
+    base_url = os.environ.get("RESEND_BASE_URL", "https://api.resend.com")
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.resend.com/emails",
+                f"{base_url}/emails",
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "from": "onboarding@resend.dev",
@@ -74,7 +78,11 @@ async def send_transactional_email(to: str, subject: str, body: str) -> bool:
                     "html": body,
                 },
             )
-            return response.status_code == 201
+            if response.status_code in {200, 201, 202, 204}:
+                return True
+            else:
+                logger.error("transactional_email_failed", status=response.status_code, body=response.text)
+                return False
     except Exception as exc:
-        logger.error("transactional_email_failed", error=str(exc))
+        logger.error("transactional_email_exception", error=str(exc))
         return False

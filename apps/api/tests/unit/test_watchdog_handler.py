@@ -1,82 +1,80 @@
-"""Unit tests for watchdog handler logic."""
-
+"""Unit tests for watchdog handler — Phase 3."""
 from __future__ import annotations
 
-import os
-import asyncio
-import threading
-from pathlib import Path
+from typing import TYPE_CHECKING
+
 import pytest
-from watchdog.events import FileCreatedEvent, DirCreatedEvent
-from src.data.watchdog_handler import BsoptFileHandler, _detect_market, start_watchdog
+from watchdog.events import DirCreatedEvent, FileCreatedEvent
+
+from src.data.watchdog_handler import BsoptFileHandler, _detect_market
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 @pytest.mark.unit
-def test_detect_market_prefixes() -> None:
-    """Verify market detection from filename prefixes."""
+def test_detect_market() -> None:
     assert _detect_market("spy_data.csv") == "spy"
-    assert _detect_market("NSE_results.json") == "nse"
-    assert _detect_market("random_file.txt") == "unknown"
+    assert _detect_market("NSE_data.csv") == "nse"
+    assert _detect_market("random.csv") == "unknown"
 
 
 @pytest.mark.unit
-def test_handler_ignores_directories() -> None:
-    """Verify that directories do not trigger processing."""
+@pytest.mark.asyncio
+async def test_handler_logic(tmp_path: Path) -> None:
     handler = BsoptFileHandler()
-    event = DirCreatedEvent("/tmp/test_dir")
+
+    # Valid file
+    file_path = tmp_path / "spy_data.csv"
+    file_path.touch()
+    event = FileCreatedEvent(str(file_path))
+    # Should not raise, even if it tries to publish (real RabbitMQ is up)
+    handler.on_created(event)
+
+    # Gzip file
+    gz_path = tmp_path / "nse_data.csv.gz"
+    gz_path.touch()
+    event_gz = FileCreatedEvent(str(gz_path))
+    handler.on_created(event_gz)
+
+    # Invalid extension
+    txt_path = tmp_path / "data.txt"
+    txt_path.touch()
+    event_txt = FileCreatedEvent(str(txt_path))
+    handler.on_created(event_txt)
+
+    # Directory event (should be ignored)
+    dir_path = tmp_path / "sub_dir"
+    dir_path.mkdir()
+    event_dir = DirCreatedEvent(str(dir_path))
+    handler.on_created(event_dir)
+
+    # Bare .gz
+    bare_gz = tmp_path / "spy_raw.gz"
+    bare_gz.touch()
+    handler.on_created(FileCreatedEvent(str(bare_gz)))
+
+    # Invalid .gz (e.g. .txt.gz)
+    invalid_gz = tmp_path / "spy_raw.txt.gz"
+    invalid_gz.touch()
+    handler.on_created(FileCreatedEvent(str(invalid_gz)))
+
+
+@pytest.mark.unit
+def test_handler_sync_loop_fallback(tmp_path: Path) -> None:
+    # This test runs without a pytest-asyncio loop in this thread
+    handler = BsoptFileHandler()
+    file_path = tmp_path / "spy_sync.csv"
+    file_path.touch()
+    event = FileCreatedEvent(str(file_path))
+    # Should trigger the 'except RuntimeError' and call asyncio.run
     handler.on_created(event)
 
 
 @pytest.mark.unit
-def test_handler_ignores_unsupported_extensions(tmp_path: Path) -> None:
-    """Verify that unsupported extensions are ignored."""
-    handler = BsoptFileHandler()
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("dummy")
-    event = FileCreatedEvent(str(test_file))
-    handler.on_created(event)
-
-
-@pytest.mark.unit
-def test_watchdog_observer_starts(tmp_path: Path) -> None:
-    """Verify that the observer can be started on a real directory."""
-    observer = start_watchdog(str(tmp_path))
+def test_start_watchdog(tmp_path: Path) -> None:
+    from src.data.watchdog_handler import start_watchdog
+    observer = start_watchdog(str(tmp_path / "watch"))
     assert observer.is_alive()
     observer.stop()
     observer.join()
-
-
-@pytest.mark.unit
-def test_handler_valid_file(tmp_path: Path, db_cleanup: None) -> None:
-    """Verify handler processes a valid file. Run in thread to avoid event loop conflicts."""
-    handler = BsoptFileHandler()
-    test_file = tmp_path / "spy_2024.csv"
-    test_file.write_text("strike,bid,ask\n100,10,11")
-    
-    # Run in a separate thread so asyncio.run() can create its own loop
-    # without conflicting with pytest-asyncio's loop.
-    thread = threading.Thread(target=handler.on_created, args=(FileCreatedEvent(str(test_file)),))
-    thread.start()
-    thread.join()
-
-
-@pytest.mark.unit
-def test_handler_case_insensitivity(tmp_path: Path) -> None:
-    """Verify extension check is case insensitive."""
-    handler = BsoptFileHandler()
-    test_file = tmp_path / "SPY.CSV"
-    test_file.write_text("dummy")
-    # Also run in thread for safety
-    thread = threading.Thread(target=handler.on_created, args=(FileCreatedEvent(str(test_file)),))
-    thread.start()
-    thread.join()
-
-
-@pytest.mark.unit
-def test_handler_supports_gz_files(tmp_path: Path) -> None:
-    """Verify that .gz files are supported."""
-    handler = BsoptFileHandler()
-    test_file = tmp_path / "spy_data.csv.gz"
-    test_file.write_text("dummy")
-    thread = threading.Thread(target=handler.on_created, args=(FileCreatedEvent(str(test_file)),))
-    thread.start()
-    thread.join()

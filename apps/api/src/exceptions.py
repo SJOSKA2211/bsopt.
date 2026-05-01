@@ -31,9 +31,9 @@ class CFLViolationError(PricingError):
 class ValidationError(BsoptError):
     """Raised when data validation fails."""
 
-    def __init__(self, errors: list[str] | list[dict[str, Any]]) -> None:
-        self.details = {"errors": errors}
-        super().__init__(str(errors))
+    def __init__(self, message: str, errors: Any = None) -> None:
+        self.errors = errors
+        super().__init__(message)
 
 
 class DatabaseError(BsoptError):

@@ -77,6 +77,15 @@ class CrankNicolsonFDM(BasePricer):
                 alpha_left, beta_left, gamma_left, rhs_vector
             )
 
+            # American early exercise
+            if params.exercise_type == "american":
+                intrinsic = (
+                    np.maximum(spot_values - params.strike_price, 0)
+                    if params.option_type == "call"
+                    else np.maximum(params.strike_price - spot_values, 0)
+                )
+                grid = np.maximum(grid, intrinsic)
+
         price = np.interp(params.underlying_price, spot_values, grid)
 
         exec_time = time.perf_counter() - start_time

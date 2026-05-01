@@ -1,29 +1,37 @@
-"""Health check router for service monitoring."""
-
+"""Health check router for monitoring service status — Python 3.14."""
 from __future__ import annotations
 
-import sys
+import time
 
 from fastapi import APIRouter
 
-from src.database.neon_client import get_pool
+from src.cache.redis_client import get_redis
+from src.database.neon_client import acquire
 
-router = APIRouter()
+router = APIRouter(prefix="/health", tags=["Health"])
 
 
-@router.get("/health")
+@router.get("")
 async def health_check() -> dict[str, str]:
-    """Verify system health, database connectivity, and Python version."""
-    db_status = "connected"
-    try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            await conn.execute("SELECT 1")
-    except Exception:
-        db_status = "disconnected"
+    """Check connectivity to core infrastructure."""
+    status = {"status": "ok", "timestamp": str(time.time())}
 
-    return {
-        "status": "ok" if db_status == "connected" else "degraded",
-        "db": db_status,
-        "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-    }
+    # Check DB
+    try:
+        async with acquire() as conn:
+            await conn.execute("SELECT 1")
+        status["database"] = "connected"
+    except Exception as exc:
+        status["database"] = f"error: {exc!s}"
+        status["status"] = "degraded"
+
+    # Check Redis
+    try:
+        redis = await get_redis()
+        await redis.ping()
+        status["redis"] = "connected"
+    except Exception as exc:
+        status["redis"] = f"error: {exc!s}"
+        status["status"] = "degraded"
+
+    return status

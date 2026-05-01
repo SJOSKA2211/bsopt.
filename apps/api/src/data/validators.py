@@ -1,7 +1,11 @@
 """Data validators for market and option data."""
+
 from __future__ import annotations
+
 from typing import Any
+
 from src.exceptions import ValidationError
+
 
 def validate_option_parameters(data: dict[str, Any]) -> None:
     """Validate raw option parameter inputs."""
@@ -40,7 +44,8 @@ def validate_option_parameters(data: dict[str, Any]) -> None:
         errors.append("market_source cannot be empty")
 
     if errors:
-        raise ValidationError(errors)
+        raise ValidationError("Validation failed", errors)
+
 
 def validate_market_data(data: dict[str, Any]) -> None:
     """Validate market data inputs (bid/ask/volume)."""
@@ -74,4 +79,4 @@ def validate_market_data(data: dict[str, Any]) -> None:
             errors.append("Volume must be an integer")
 
     if errors:
-        raise ValidationError(errors)
+        raise ValidationError("Validation failed", errors)

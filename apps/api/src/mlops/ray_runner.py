@@ -15,9 +15,8 @@ from src.metrics import RAY_CLUSTER_CPUS, RAY_TASKS_COMPLETED, RAY_TASKS_SUBMITT
 logger = structlog.get_logger(__name__)
 
 
-@ray.remote
-def price_remote(params_dict: dict[str, Any], method_name: str) -> dict[str, Any]:
-    """Ray remote task: import method at runtime and compute price."""
+def _price_logic(params_dict: dict[str, Any], method_name: str) -> dict[str, Any]:
+    """Core pricing logic extracted for unit testing without Ray."""
     # Dynamic method import — no global state pollution between workers
     import importlib
 
@@ -69,17 +68,37 @@ def price_remote(params_dict: dict[str, Any], method_name: str) -> dict[str, Any
     }
 
 
+@ray.remote
+def price_remote(params_dict: dict[str, Any], method_name: str) -> dict[str, Any]:
+    """Ray remote task: delegation to _price_logic."""
+    return _price_logic(params_dict, method_name)
+
+
 class RayExperimentRunner:
-    def __init__(self, ray_address: str, mlflow_tracking_uri: str) -> None:
+    _connection_failed = False
+
+    def __init__(self, ray_address: str, mlflow_tracking_uri: str, **ray_kwargs: Any) -> None:
         self.ray_address = ray_address
         self.mlflow_tracking_uri = mlflow_tracking_uri
+        self.ray_kwargs = ray_kwargs
 
     def connect(self) -> None:
         if not ray.is_initialized():
-            if self.ray_address:
-                ray.init(address=self.ray_address, ignore_reinit_error=True)
-            else:
-                ray.init(ignore_reinit_error=True)
+            if RayExperimentRunner._connection_failed:
+                ray.init(ignore_reinit_error=True, **self.ray_kwargs)
+                return
+
+            try:
+                if self.ray_address:
+                    ray.init(address=self.ray_address, ignore_reinit_error=True, **self.ray_kwargs)
+                else:
+                    ray.init(ignore_reinit_error=True, **self.ray_kwargs)
+            except Exception as exc:
+                logger.warning("ray_remote_connect_failed", error=str(exc), fallback="local")
+                RayExperimentRunner._connection_failed = True
+                if ray.is_initialized():
+                    ray.shutdown()
+                ray.init(ignore_reinit_error=True, **self.ray_kwargs)
         from typing import cast
 
         # Use getattr and cast to Any to bypass Mypy's disallow-untyped-calls for the Ray library

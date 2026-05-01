@@ -15,15 +15,14 @@ logger = structlog.get_logger(__name__)
 async def init_db() -> None:
     """Read the initial schema SQL and execute it against NeonDB."""
     schema_path = Path(__file__).parent.parent.parent.parent / "migrations" / "001_initial_schema.sql"
-    
+
     if not schema_path.exists():
         logger.error("schema_file_missing", path=str(schema_path))
         return
 
     logger.info("db_init_started", path=str(schema_path))
-    
-    with open(schema_path) as f:
-        schema_sql = f.read()
+
+    schema_sql = Path(schema_path).read_text(encoding="utf-8")
 
     pool = await get_pool()
     async with pool.acquire() as conn:

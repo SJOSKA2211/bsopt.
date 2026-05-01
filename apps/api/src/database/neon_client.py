@@ -1,7 +1,8 @@
-"""NeonDB async connection pool — asyncpg 0.30, Python 3.14 free-threaded."""
+"""NeonDB async connection pool — loop-aware lazy init."""
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import time
 from typing import TYPE_CHECKING
@@ -17,12 +18,19 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 _pool: asyncpg.Pool | None = None
+_loop: asyncio.AbstractEventLoop | None = None
 
 
 async def get_pool() -> asyncpg.Pool:
-    """Return global asyncpg pool; create on first call (lazy init)."""
-    global _pool
-    if _pool is None:
+    """Return global asyncpg pool; create on first call or loop change."""
+    global _pool, _loop
+    current_loop = asyncio.get_running_loop()
+
+    if _pool is None or _loop != current_loop or _pool._closed:
+        # DO NOT close the old pool if it belongs to a different loop
+        # just drop the reference and let the GC/cleanup handle it.
+        _pool = None
+
         settings = get_settings()
         _pool = await asyncpg.create_pool(
             dsn=settings.neon_connection_string,
@@ -30,10 +38,12 @@ async def get_pool() -> asyncpg.Pool:
             max_size=10,
             command_timeout=30,
             statement_cache_size=200,
-            server_settings={"jit": "off"},  # NeonDB serverless: disable JIT
+            server_settings={"jit": "off"},
         )
+        _loop = current_loop
         NEON_POOL_SIZE.set(10)
-        logger.info("neondb_pool_created", min_size=2, max_size=10, step="init", rows=0)
+        logger.info("neondb_pool_created", step="init", rows=0)
+
     assert _pool is not None
     NEON_POOL_IDLE.set(_pool.get_idle_size())
     return _pool
@@ -41,16 +51,22 @@ async def get_pool() -> asyncpg.Pool:
 
 async def close_pool() -> None:
     """Close the global pool."""
-    global _pool
+    global _pool, _loop
     if _pool:
-        await _pool.close()
+        try:
+            current_loop = asyncio.get_running_loop()
+            if _loop == current_loop:
+                await _pool.close()
+        except RuntimeError:
+            pass
         _pool = None
+        _loop = None
         logger.info("neondb_pool_closed", step="shutdown", rows=0)
 
 
 @contextlib.asynccontextmanager
 async def acquire() -> AsyncIterator[asyncpg.Connection]:
-    """Acquire a connection; track duration and errors via Prometheus."""
+    """Acquire a connection from the loop-aware pool."""
     pool = await get_pool()
     start = time.perf_counter()
     try:
@@ -58,25 +74,7 @@ async def acquire() -> AsyncIterator[asyncpg.Connection]:
             yield conn
     except Exception as exc:
         NEON_ERRORS_TOTAL.labels(operation="acquire").inc()
-        logger.error(
-            "neondb_acquire_failed",
-            error_type=type(exc).__name__,
-            error_message=str(exc),
-            component="neon_client",
-            severity="error",
-            context={},
-        )
+        logger.error("neondb_acquire_failed", error=str(exc))
         raise
     finally:
         NEON_QUERY_DURATION.labels(operation="acquire").observe(time.perf_counter() - start)
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    async def test_conn() -> None:
-        async with acquire() as conn:
-            val = await conn.fetchval("SELECT 1")
-            print(f"NeonDB Connection Test: {val}")
-
-    asyncio.run(test_conn())

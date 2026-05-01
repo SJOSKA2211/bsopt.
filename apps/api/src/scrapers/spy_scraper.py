@@ -19,7 +19,7 @@ class SpyScraper(BaseScraper):
         super().__init__(market="spy")
         self.base_url = "https://finance.yahoo.com/quote/SPY/options"
 
-    async def scrape(self, url: str | None = None) -> list[dict[str, Any]]:  # pragma: no cover
+    async def scrape(self, url: str | None = None) -> list[dict[str, Any]]:
         """Scrape SPY options data and return raw rows."""
         target_url = url or self.base_url
         logger.info("scraping_started", market=self.market, url=target_url)

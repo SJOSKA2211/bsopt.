@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS method_results (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(option_id, method_type, parameter_hash)
 );
-CREATE INDEX idx_method_results_params ON method_results USING GIN (parameter_set);
+CREATE INDEX IF NOT EXISTS idx_method_results_params ON method_results USING GIN (parameter_set);
 
 CREATE TABLE IF NOT EXISTS market_data (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

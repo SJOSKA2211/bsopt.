@@ -1,89 +1,84 @@
-"""Pricing router for option valuation across multiple numerical methods."""
-
+"""Pricing router for single and batch option pricing — Python 3.14."""
 from __future__ import annotations
 
-import importlib
+import asyncio
 from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
-from src.auth.dependencies import get_current_user
-from src.data.validators import validate_option_parameters
-from src.methods.base import OptionParams
-from src.metrics import PRICE_COMPUTATIONS_TOTAL, PRICE_DURATION_SECONDS
+from src.auth.dependencies import get_current_user_id
+from src.config import get_settings
+from src.database.repository import save_method_result, save_option_parameters
+from src.mlops.ray_runner import RayExperimentRunner
 
-router = APIRouter(prefix="/pricing", tags=["pricing"])
 logger = structlog.get_logger(__name__)
+router = APIRouter(prefix="/pricing", tags=["Pricing"])
 
-# Map method names to their module and class
-METHOD_REGISTRY = {
-    "analytical": ("src.methods.analytical", "BlackScholesAnalytical"),
-    "explicit_fdm": ("src.methods.finite_difference.explicit", "ExplicitFDM"),
-    "implicit_fdm": ("src.methods.finite_difference.implicit", "ImplicitFDM"),
-    "crank_nicolson": ("src.methods.finite_difference.crank_nicolson", "CrankNicolsonFDM"),
-    "standard_mc": ("src.methods.monte_carlo.standard", "StandardMonteCarlo"),
-    "antithetic_mc": ("src.methods.monte_carlo.antithetic", "AntitheticMonteCarlo"),
-    "control_variate_mc": ("src.methods.monte_carlo.control_variates", "ControlVariateMonteCarlo"),
-    "quasi_mc": ("src.methods.monte_carlo.quasi_mc", "QuasiMonteCarlo"),
-    "binomial_crr": ("src.methods.tree_methods.binomial_crr", "BinomialCRR"),
-    "trinomial": ("src.methods.tree_methods.trinomial", "TrinomialTree"),
-    "binomial_crr_richardson": ("src.methods.tree_methods.richardson", "RichardsonExtrapolation"),
-    "trinomial_richardson": (
-        "src.methods.tree_methods.richardson",
-        "TrinomialRichardsonExtrapolation",
-    ),
-}
+
+class PricingRequest(BaseModel):
+    underlying_price: float = Field(..., gt=0)
+    strike_price: float = Field(..., gt=0)
+    time_to_expiry: float = Field(..., gt=0)
+    volatility: float = Field(..., gt=0)
+    risk_free_rate: float = Field(..., gt=0)
+    option_type: str = Field(..., pattern="^(call|put)$")
+    method_type: str = Field("analytical", pattern="^(analytical|explicit_fdm|implicit_fdm|crank_nicolson|standard_mc|antithetic_mc|control_variate_mc|quasi_mc|binomial_crr|trinomial|binomial_crr_richardson|trinomial_richardson)$")
 
 
 @router.post("/")
-async def price_option(
-    params_dict: dict[str, Any],
-    method: str = "analytical",
-    user: dict[str, Any] = Depends(get_current_user),
+async def calculate_price(
+    request: PricingRequest,
+    user_id: str = Depends(get_current_user_id)
 ) -> dict[str, Any]:
-    """
-    Compute option price using the specified numerical method.
-    Authenticated users only.
-    """
-    # 1. Validate
-    validate_option_parameters(params_dict)
+    """Calculate option price using the specified method."""
+    settings = get_settings()
+    runner = RayExperimentRunner(ray_address=settings.ray_address, mlflow_tracking_uri=settings.mlflow_tracking_uri)
 
-    # 2. Get Pricer
-    if method not in METHOD_REGISTRY:
-        raise HTTPException(status_code=400, detail=f"Unsupported pricing method: {method}")
-
-    module_path, cls_name = METHOD_REGISTRY[method]
     try:
-        module = importlib.import_module(module_path)
-        pricer_cls = getattr(module, cls_name)
-        pricer = pricer_cls()
+        # Retry logic for Ray connection
+        for _ in range(3):
+            try:
+                runner.connect()
+                break
+            except Exception:
+                await asyncio.sleep(1)
+        else:
+            # Fallback to local execution if address is empty or connection fails
+            runner.ray_address = ""
+            runner.connect()
+
+        param_dict = request.model_dump()
+        method = param_dict.pop("method_type")
+
+        # Save params to DB
+        opt_id = await save_option_parameters(
+            **param_dict,
+            market_source="api_request",
+            created_by=user_id
+        )
+
+        # Run on Ray (or locally if ray_address is empty)
+        results = runner.run_grid(f"api_pricing_{user_id}", [(param_dict, method)])
+        result = results[0]
+
+        # Save result to DB
+        await save_method_result(
+            option_id=opt_id,
+            method_type=method,
+            computed_price=result["computed_price"],
+            parameter_set=result["parameter_set"],
+            exec_seconds=result["exec_seconds"],
+            converged=result["converged"]
+        )
+
+        return {
+            "option_id": opt_id,
+            "computed_price": result["computed_price"],
+            "exec_seconds": result["exec_seconds"],
+            "method": method
+        }
     except Exception as exc:
-        logger.error("method_import_failed", method=method, error=str(exc))
-        raise HTTPException(status_code=500, detail="Internal pricing engine error") from exc
-
-    # 3. Execute
-    params = OptionParams(**params_dict)
-
-    # Track metrics
-    with PRICE_DURATION_SECONDS.labels(method_type=method).time():
-        result = pricer.price(params)
-
-    PRICE_COMPUTATIONS_TOTAL.labels(
-        method_type=method, option_type=params.option_type, converged=str(result.converged)
-    ).inc()
-
-    logger.info(
-        "option_priced",
-        method=method,
-        price=result.computed_price,
-        user_id=str(user.get("id")),
-    )
-
-    return {
-        "method_type": result.method_type,
-        "computed_price": result.computed_price,
-        "exec_seconds": result.exec_seconds,
-        "converged": result.converged,
-        "parameter_set": result.parameter_set,
-    }
+        logger.error("pricing_calculation_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))

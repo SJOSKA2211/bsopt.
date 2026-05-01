@@ -19,8 +19,10 @@ def setup_logging(debug: bool = False) -> None:
         structlog.processors.JSONRenderer(),
     ]
 
+    from typing import Any, cast
+
     structlog.configure(
-        processors=processors,
+        processors=cast("list[Any]", processors),
         wrapper_class=structlog.make_filtering_bound_logger(
             logging.DEBUG if debug else logging.INFO
         ),

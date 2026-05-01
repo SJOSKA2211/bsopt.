@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+
 import httpx
 import pytest
 
@@ -23,7 +24,7 @@ async def test_gzip_compression() -> None:
             except Exception:
                 pass
             await asyncio.sleep(1)
-        
+
         if not ready:
             pytest.fail("API not ready after 30s")
 
@@ -35,10 +36,10 @@ async def test_gzip_compression() -> None:
             "risk_free_rate": 0.05,
             "option_type": "call"
         }
-        
+
         headers = {"Accept-Encoding": "gzip"}
         response = await client.post("/api/v1/pricing/", json=params, headers=headers)
-        
+
         assert response.status_code == 200
         assert response.headers.get("Content-Encoding") == "gzip"
 
@@ -56,9 +57,9 @@ async def test_brotli_compression() -> None:
             "risk_free_rate": 0.05,
             "option_type": "call"
         }
-        
+
         headers = {"Accept-Encoding": "br"}
         response = await client.post("/api/v1/pricing/", json=params, headers=headers)
-        
+
         assert response.status_code == 200
         assert response.headers.get("Content-Encoding") == "br"

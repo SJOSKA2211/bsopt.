@@ -1,11 +1,8 @@
 """Feature store for market data snapshots."""
 
-from typing import TYPE_CHECKING
+from datetime import date
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from datetime import date
 
 
 class FeatureStore:

@@ -1,8 +1,8 @@
 """Unit tests for cache logic (Zero-Mock)."""
 from __future__ import annotations
+
 import pytest
-import asyncio
-from src.cache.decorators import cache_response
+
 
 @pytest.mark.unit
 class TestCacheDecorator:
@@ -13,7 +13,6 @@ class TestCacheDecorator:
 
         async def mock_get_cache(key: str, endpoint: str) -> None:
             keys_captured.append(key)
-            return None
 
         async def mock_set_cache(key: str, value: Any, ttl: int) -> None:
             return None
@@ -21,9 +20,9 @@ class TestCacheDecorator:
         # Even with Zero-Mock, for 'unit' tests of decorators, we sometimes need to isolate.
         # BUT the prompt says "NOT ALLOWED anywhere: MagicMock, AsyncMock, patch ... monkeypatching of get_redis()".
         # It says "Unit tests that would normally mock a Redis client instead test the algorithm directly with pure functions."
-        
+
         # So I should extract the key generation logic into a pure function and test that.
-        pass
+
 
 def generate_cache_key(prefix: str, func_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:
     """Pure function for key generation."""
@@ -32,12 +31,13 @@ def generate_cache_key(prefix: str, func_name: str, args: tuple[Any, ...], kwarg
     if kwargs: key_parts.append(str(sorted(kwargs.items())))
     return ":".join(key_parts)
 
+
 @pytest.mark.unit
 def test_pure_key_generation() -> None:
     key1 = generate_cache_key("res", "my_func", (1, 2), {"a": 3})
     key2 = generate_cache_key("res", "my_func", (1, 2), {"a": 3})
     key3 = generate_cache_key("res", "my_func", (1, 2), {"a": 4})
-    
+
     assert key1 == key2
     assert key1 != key3
-    assert "res:my_func:(1, 2):[('a', 3)]" == key1
+    assert key1 == "res:my_func:(1, 2):[('a', 3)]"

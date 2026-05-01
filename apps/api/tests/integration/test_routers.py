@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
-from httpx import AsyncClient
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -25,12 +30,14 @@ async def test_pricing_endpoint(async_client: AsyncClient, auth_headers: dict[st
     response = await async_client.post("/api/v1/pricing/", json=payload)
     assert response.status_code == 401
 
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_market_data_endpoint(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     response = await async_client.get("/api/v1/market-data/", headers=auth_headers)
     assert response.status_code == 200
     assert "results" in response.json()
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -49,12 +56,13 @@ async def test_mlops_endpoints(async_client: AsyncClient, auth_headers: dict[str
         "user_ids": ["test-uuid"]
     }
     response = await async_client.post(
-        "/api/v1/mlops/drift/check", 
-        params=drift_params, 
-        json=drift_json["user_ids"], # Wait! Signature was user_ids: list[str]
+        "/api/v1/mlops/drift/check",
+        params=drift_params,
+        json=drift_json["user_ids"],  # Wait! Signature was user_ids: list[str]
         headers=auth_headers
     )
     assert response.status_code == 200
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -62,6 +70,7 @@ async def test_notifications_endpoints(async_client: AsyncClient, auth_headers: 
     response = await async_client.get("/api/v1/notifications/", headers=auth_headers)
     assert response.status_code == 200
     assert "results" in response.json()
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -73,12 +82,14 @@ async def test_scrapers_endpoints(async_client: AsyncClient, auth_headers: dict[
     assert response.status_code == 200
     assert response.json()["status"] == "success"
 
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_experiments_endpoints(async_client: AsyncClient, auth_headers: dict[str, str]) -> None:
     response = await async_client.get("/api/v1/experiments/", headers=auth_headers)
     assert response.status_code == 200
     assert "results" in response.json()
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio

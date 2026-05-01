@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
+import structlog
+
+from src.cache.redis_client import get_redis
 from src.websocket.manager import manager
+
+logger = structlog.get_logger(__name__)
 
 
 async def broadcast_metric_update(metric_data: dict[str, Any]) -> None:
@@ -32,31 +38,29 @@ async def send_user_notification(user_id: str, notification: dict[str, Any]) -> 
 
 async def start_redis_pubsub_listener(max_loops: int | None = None) -> None:
     """Listen for global system events on Redis and broadcast them via WebSockets."""
-    import json
-
-    import structlog
-
-    from src.cache.redis_client import get_redis
-
-    logger = structlog.get_logger(__name__)
     redis = await get_redis()
     pubsub = redis.pubsub()
 
-    # Subscribe to system-wide and specific channels
     await pubsub.subscribe("bsopt:events", "metrics", "experiments", "scrapers", "notifications")
-
     logger.info("redis_pubsub_listener_started")
 
     loops = 0
     try:
         while max_loops is None or loops < max_loops:
             loops += 1
+            # Note: get_message with timeout=1.0 will wait up to 1 second
             message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
             if message:
-                channel = message["channel"].decode("utf-8")
-                data = json.loads(message["data"].decode("utf-8"))
+                channel = message["channel"]
+                if isinstance(channel, bytes):
+                    channel = channel.decode("utf-8")
 
-                # Route messages
+                raw_data = message["data"]
+                if isinstance(raw_data, bytes):
+                    raw_data = raw_data.decode("utf-8")
+
+                data = json.loads(raw_data)
+
                 if channel == "bsopt:events":
                     target_channel = data.get("channel")
                     event = data.get("event")
@@ -68,8 +72,14 @@ async def start_redis_pubsub_listener(max_loops: int | None = None) -> None:
                     await manager.broadcast(channel, data)
 
             await asyncio.sleep(0.01)
+    except asyncio.CancelledError:
+        logger.info("redis_pubsub_listener_cancelled")
+        raise
     except Exception as exc:
         logger.error("redis_pubsub_listener_failed", error=str(exc))
     finally:
-        await pubsub.unsubscribe()
-        await pubsub.close()
+        try:
+            await pubsub.unsubscribe()
+            await pubsub.aclose()  # type: ignore[no-untyped-call]
+        except Exception as exc:
+            logger.warning("redis_pubsub_cleanup_failed", error=str(exc))

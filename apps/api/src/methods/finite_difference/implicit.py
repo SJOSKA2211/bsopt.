@@ -66,6 +66,15 @@ class ImplicitFDM(BasePricer):
             # Solve tridiagonal system
             grid[1:m_steps] = self._thomas_algorithm(alpha, beta, gamma, rhs_vector)
 
+            # American early exercise
+            if params.exercise_type == "american":
+                intrinsic = (
+                    np.maximum(spot_values - params.strike_price, 0)
+                    if params.option_type == "call"
+                    else np.maximum(params.strike_price - spot_values, 0)
+                )
+                grid = np.maximum(grid, intrinsic)
+
         # Linear interpolation to find price at underlying_price
         price = np.interp(params.underlying_price, spot_values, grid)
 

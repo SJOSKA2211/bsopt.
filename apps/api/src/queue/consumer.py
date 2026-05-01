@@ -1,20 +1,23 @@
 """RabbitMQ task consumers."""
-
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from src.metrics import RABBITMQ_CONSUMED
-from src.queue.rabbitmq_client import get_rabbitmq_connection
+from src.queue.rabbitmq_client import get_rabbitmq
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = structlog.get_logger(__name__)
 
 
-async def start_consumer(queue_name: str, callback: callable) -> None:
+async def start_consumer(queue_name: str, callback: Callable[[dict[str, Any]], Any]) -> None:
     """Generic consumer starter."""
-    connection = await get_rabbitmq_connection()
+    connection = await get_rabbitmq()
     channel = await connection.channel()
     await channel.set_qos(prefetch_count=1)
     queue = await channel.declare_queue(queue_name, durable=True)
@@ -29,5 +32,13 @@ async def start_consumer(queue_name: str, callback: callable) -> None:
                 except Exception as exc:
                     RABBITMQ_CONSUMED.labels(queue=queue_name, status="error").inc()
                     logger.error("consumer_error", queue=queue_name, error=str(exc))
-                    # Optionally re-queue or send to DLX
                     raise
+
+
+class ScraperConsumer:
+    """Specialized consumer for scraper tasks."""
+    def __init__(self, callback: Callable[[dict[str, Any]], Any]) -> None:
+        self.callback = callback
+
+    async def start(self) -> None:
+        await start_consumer("scraper_tasks", self.callback)

@@ -30,11 +30,30 @@ async def get_user_by_email(email: str) -> dict[str, str | UUID] | None:
         return dict(row) if row else None
 
 
+async def save_user(user_id: UUID | str, email: str, display_name: str, role: str = "researcher") -> None:
+    """Upsert a user record."""
+    async with acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO users (id, email, display_name, role)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (id) DO UPDATE
+            SET email = EXCLUDED.email, display_name = EXCLUDED.display_name, role = EXCLUDED.role, updated_at = NOW()
+            """,
+            str(user_id),
+            email,
+            display_name,
+            role,
+        )
+
+
 async def get_user_push_subscriptions(user_id: str) -> list[str]:
     """Fetch user's push subscriptions from the users table."""
+    from uuid import UUID
+
     async with acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT notification_preferences FROM users WHERE id = $1", user_id
+            "SELECT notification_preferences FROM users WHERE id = $1", UUID(user_id)
         )
         if row and row["notification_preferences"]:
             prefs = row["notification_preferences"]
@@ -42,6 +61,40 @@ async def get_user_push_subscriptions(user_id: str) -> list[str]:
                 prefs = json.loads(prefs)
             return cast("list[str]", prefs.get("push_subscriptions", []))
     return []
+
+
+async def save_user_push_subscription(user_id: str, subscription_info: str | dict[str, Any]) -> None:
+    """Add a push subscription to the user's notification preferences."""
+    from uuid import UUID
+
+    async with acquire() as conn:
+        uid = UUID(user_id)
+        # Get current prefs
+        row = await conn.fetchrow("SELECT notification_preferences FROM users WHERE id = $1", uid)
+        if not row:
+            # Create user if not exists (minimal for test/demo)
+            await conn.execute(
+                "INSERT INTO users (id, email) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                uid,
+                f"user_{user_id}@example.com",
+            )
+            prefs: dict[str, Any] = {"push_subscriptions": []}
+        else:
+            prefs = row["notification_preferences"] or {"push_subscriptions": []}
+            if isinstance(prefs, str):
+                prefs = json.loads(prefs)
+
+        subs = prefs.get("push_subscriptions", [])
+        if subscription_info not in subs:
+            subs.append(subscription_info)
+
+        prefs["push_subscriptions"] = subs
+        print(f"DEBUG: saving prefs for {user_id}: {prefs}")
+        await conn.execute(
+            "UPDATE users SET notification_preferences = $1 WHERE id = $2",
+            json.dumps(prefs),
+            uid,
+        )
 
 
 async def query_recent_mape(method_type: str, days: int = 7) -> float:
@@ -292,6 +345,11 @@ async def save_method_result(
                 computed_price, exec_seconds, converged, mlflow_run_id
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (option_id, method_type, parameter_hash) DO UPDATE
+            SET computed_price = EXCLUDED.computed_price,
+                exec_seconds = EXCLUDED.exec_seconds,
+                converged = EXCLUDED.converged,
+                mlflow_run_id = EXCLUDED.mlflow_run_id
             RETURNING id
             """,
             str(option_id),

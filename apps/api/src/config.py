@@ -57,11 +57,18 @@ class Settings(BaseSettings):
 
     # Email
     resend_api_key: str
+    resend_from_email: str = "alerts@bsopt.example.com"
+    resend_base_url: str = "https://api.resend.com"
 
     # Environment
     env: str = "production"
+    debug: bool = False
     enable_compression: bool = True
     compression_threshold_bytes: int = 1024
+
+    # Web Push
+    gh_vapid_private_key: str | None = None
+    gh_vapid_public_key: str | None = None
 
 
 @lru_cache

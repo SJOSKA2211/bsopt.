@@ -13,6 +13,14 @@ from src.database.repository import get_user_by_id
 security = HTTPBearer(auto_error=False)
 
 
+class MockCredentials:
+    """Helper class to wrap a token for get_current_user without requiring HTTPBearer headers."""
+
+    def __init__(self, token: str) -> None:
+        self.credentials = token
+        self.scheme = "Bearer"
+
+
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Security(security)],
 ) -> dict[str, str | UUID]:

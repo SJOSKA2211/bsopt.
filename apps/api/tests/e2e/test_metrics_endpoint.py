@@ -14,7 +14,7 @@ async def test_prometheus_metrics_content() -> None:
         async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
             response = await client.get("/metrics")
             assert response.status_code == 200
-            
+
             content = response.text
             assert "bsopt_price_computations_total" in content
             assert "bsopt_neondb_query_duration_seconds" in content

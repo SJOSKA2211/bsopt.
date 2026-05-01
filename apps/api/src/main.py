@@ -1,21 +1,18 @@
-"""Main entry point for bsopt FastAPI backend."""
-
+"""Main FastAPI application for Bsopt — Phase 10."""
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from prometheus_client import make_asgi_app
 
-from src.config import get_settings
-from src.data.watchdog_handler import start_watchdog
-from src.database.neon_client import get_pool
-from src.logging_config import setup_logging
+from src.cache.redis_client import close_redis, get_redis
+from src.database.neon_client import close_pool, get_pool
+from src.queue.rabbitmq_client import close_rabbitmq, get_rabbitmq
 from src.routers import (
     downloads,
     experiments,
@@ -30,83 +27,71 @@ from src.routers import (
 from src.websocket.channels import start_redis_pubsub_listener
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
 logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Lifecycle management for infrastructure connections."""
-    settings = get_settings()
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Manage application startup and shutdown events."""
+    logger.info("app_starting")
 
-    # 1. Initialize DB Pool (non-blocking failure)
-    try:
-        await get_pool()
-    except Exception as exc:
-        logger.error("db_connection_failed_at_startup", error=str(exc))
+    # Initialize infrastructure
+    await get_pool()
+    await get_redis()
+    await get_rabbitmq()
 
-    # 2. Start Redis Pub/Sub listener for WebSockets (runs in background)
+    # Start background tasks
     pubsub_task = asyncio.create_task(start_redis_pubsub_listener())
-
-    # 3. Start Watchdog (starts its own background thread)
-    observer = start_watchdog(settings.watchdog_watch_dir)
-
-    logger.info("app_startup_complete", step="init", rows=0)
 
     yield
 
-    # Shutdown sequence
-    logger.info("app_shutdown_started")
-    observer.stop()
-    observer.join()
+    # Shutdown infrastructure
     pubsub_task.cancel()
-
-    from src.database.neon_client import close_pool
+    with suppress(asyncio.CancelledError):
+        await pubsub_task
 
     await close_pool()
-    logger.info("app_shutdown_complete")
+    await close_redis()
+    await close_rabbitmq()
 
+    logger.info("app_stopped")
 
-# Initialize logging
-setup_logging(debug=get_settings().debug)
 
 app = FastAPI(
-    title="bsopt API",
+    title="Bsopt API",
+    description="Black-Scholes Options Research Platform API",
     version="1.0.0",
     lifespan=lifespan,
-    description="Black-Scholes Options Research Platform API",
 )
 
-# CORS configuration
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict this in production via env
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Compression
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-try:
-    from brotli_asgi import BrotliMiddleware
-
-    app.add_middleware(BrotliMiddleware, minimum_size=1000)
-except ImportError:
-    logger.warning("brotli_asgi_not_found", msg="Brotli compression disabled")
-
-# Prometheus /metrics endpoint (ASGI mount)
+# Prometheus metrics
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
-# Router registration
+# Health check (unprefixed)
 app.include_router(health.router)
+
+# API v1 (prefixed)
 app.include_router(pricing.router, prefix="/api/v1")
+app.include_router(experiments.router, prefix="/api/v1")
+app.include_router(mlops.router, prefix="/api/v1")
+app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(market_data.router, prefix="/api/v1")
 app.include_router(scrapers.router, prefix="/api/v1")
-app.include_router(mlops.router, prefix="/api/v1")
-app.include_router(experiments.router, prefix="/api/v1")
+app.include_router(websocket.router, prefix="/api/v1")
 app.include_router(downloads.router, prefix="/api/v1")
-app.include_router(notifications.router, prefix="/api/v1")
-app.include_router(websocket.router)
+
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to Bsopt API", "docs": "/docs"}

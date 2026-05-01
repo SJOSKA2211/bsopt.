@@ -16,14 +16,14 @@ logger = structlog.get_logger(__name__)
 async def run_experiments() -> None:
     """Initialize Ray and run a sample grid of pricing experiments."""
     settings = get_settings()
-    
+
     runner = RayExperimentRunner(
         ray_address=settings.ray_address,
         mlflow_tracking_uri=settings.mlflow_tracking_uri,
     )
-    
+
     runner.connect()
-    
+
     # Example parameter grid matching OptionParams schema
     param_grid: list[tuple[dict[str, Any], str]] = [
         ({
@@ -43,7 +43,7 @@ async def run_experiments() -> None:
             "option_type": "binomial_crr"
         }, "binomial_crr"),
     ]
-    
+
     results = runner.run_grid("grid_test", param_grid)
     logger.info("experiments_finished", total=len(results))
 
