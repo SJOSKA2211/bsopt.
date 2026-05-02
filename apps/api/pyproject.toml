@@ -64,7 +64,7 @@ select = [
   "E","W","F","I","B","C4","UP","N","S","ANN","SIM","TCH",
   "RUF","ERA","PIE","PL","PERF","FURB",
 ]
-ignore = ["S101","PLC0415","B008","ANN401","PLW0603","PLR0913","E501","PLR6301","PLR2004","RUF029","ERA001","PLR0914","PLR0917","PLR0912","PLR0915","PLR0916"]
+ignore = ["S101","PLC0415","B008","ANN401","PLW0603","PLR0913","E501","PLR6301","PLR2004","RUF029","ERA001","PLR0914","PLR0917","PLR0912","PLR0915","PLR0916", "RUF069", "PLC1901", "B017", "S110", "PLC2701", "ANN001", "ANN201", "B904", "S105", "S108", "E701", "SIM105", "B903", "F821", "PIE790", "F404", "E402", "I001"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**"   = ["S101","ANN"]

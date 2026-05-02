@@ -96,8 +96,6 @@ class RayExperimentRunner:
             except Exception as exc:
                 logger.warning("ray_remote_connect_failed", error=str(exc), fallback="local")
                 RayExperimentRunner._connection_failed = True
-                if ray.is_initialized():
-                    ray.shutdown()
                 ray.init(ignore_reinit_error=True, **self.ray_kwargs)
         from typing import cast
 

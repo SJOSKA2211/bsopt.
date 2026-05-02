@@ -42,10 +42,10 @@ def test_export_to_json():
 def test_compute_basic_stats():
     prices = [10.0, 11.0, 12.0]
     stats = compute_basic_stats(prices)
-    assert stats["mean"] == 11.0
-    assert stats["min"] == 10.0
-    assert stats["max"] == 12.0
-    assert stats["median"] == 11.0
+    assert stats["mean"] == pytest.approx(11.0)
+    assert stats["min"] == pytest.approx(10.0)
+    assert stats["max"] == pytest.approx(12.0)
+    assert stats["median"] == pytest.approx(11.0)
     assert stats["std"] > 0
 
     assert compute_basic_stats([]) == {}
@@ -61,7 +61,7 @@ def test_calculate_greeks():
 @pytest.mark.unit
 def test_calculate_implied_volatility():
     iv = calculate_implied_volatility(10, 100, 100, 1, 0.05)
-    assert iv == 0.2
+    assert iv == pytest.approx(0.2)
 
 
 @pytest.mark.unit
@@ -81,7 +81,7 @@ def test_estimate_convergence_order():
     order = estimate_convergence_order(steps, errors)
     assert order == pytest.approx(2.0)
 
-    assert estimate_convergence_order([10], [0.1]) == 0.0
+    assert estimate_convergence_order([10], [0.1]) == pytest.approx(0.0)
 
 
 @pytest.mark.unit

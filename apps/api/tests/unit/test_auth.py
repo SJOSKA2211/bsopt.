@@ -11,6 +11,8 @@ from src.database.repository import save_user
 
 
 class MockCredentials:
+    pass
+
     def __init__(self, token: str) -> None:
         self.credentials = token
 

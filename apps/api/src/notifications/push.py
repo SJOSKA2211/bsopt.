@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -40,11 +41,13 @@ async def send_push_notification(n: Notification) -> bool:
     for sub_item in subscriptions:
         try:
             subscription_info = json.loads(sub_item) if isinstance(sub_item, str) else sub_item
-            webpush(
+            await asyncio.to_thread(
+                webpush,
                 subscription_info=subscription_info,
                 data=json.dumps(payload),
                 vapid_private_key=settings.gh_vapid_private_key,
                 vapid_claims={"sub": f"mailto:{settings.resend_from_email}"},
+                timeout=10,
             )
             success_count += 1
         except WebPushException as exc:
