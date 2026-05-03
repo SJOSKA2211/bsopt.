@@ -1,4 +1,5 @@
 """Scrapers router for managing market data collection — Python 3.14."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -14,8 +15,7 @@ router = APIRouter(prefix="/scrapers", tags=["Scrapers"])
 
 @router.get("/runs")
 async def get_scrape_runs(
-    limit: int = Query(10, le=50),
-    user_id: str = Depends(get_current_user_id)
+    limit: int = Query(10, le=50), user_id: str = Depends(get_current_user_id)
 ) -> list[dict[str, Any]]:
     """Fetch recent scraper runs."""
     return await get_recent_scrape_runs(limit=limit)
@@ -23,8 +23,7 @@ async def get_scrape_runs(
 
 @router.post("/trigger")
 async def trigger_scraper(
-    market: str = Query(...),
-    admin_user: dict[str, Any] = Depends(get_admin_user)
+    market: str = Query(...), admin_user: dict[str, Any] = Depends(get_admin_user)
 ) -> dict[str, str]:
     """Trigger a scraper run via RabbitMQ."""
     try:

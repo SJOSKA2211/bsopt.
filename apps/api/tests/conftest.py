@@ -1,4 +1,5 @@
 """Pytest configuration and global fixtures."""
+
 from __future__ import annotations
 
 import asyncio
@@ -21,14 +22,10 @@ os.environ["MLFLOW_TRACKING_URI"] = "http://127.0.0.1:5000"
 os.environ["RAY_ADDRESS"] = ""
 os.environ["WATCHDOG_WATCH_DIR"] = "/home/kamau/bsopt./apps/api/tests/watch"
 
-from typing import TYPE_CHECKING
 
 from src.cache.redis_client import close_redis
 from src.database.neon_client import close_pool
 from src.queue.rabbitmq_client import close_rabbitmq
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
 
 
 @pytest.fixture(scope="session")
@@ -45,6 +42,7 @@ async def async_client() -> AsyncIterator[Any]:
     from httpx import ASGITransport, AsyncClient
 
     from src.main import app
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
@@ -52,9 +50,7 @@ async def async_client() -> AsyncIterator[Any]:
 @pytest.fixture
 def auth_headers(test_user: dict[str, Any]) -> dict[str, str]:
     """Auth headers using the test_user's ID as a Bearer token."""
-    return {
-        "Authorization": f"Bearer {test_user['id']}"
-    }
+    return {"Authorization": f"Bearer {test_user['id']}"}
 
 
 @pytest.fixture
@@ -63,6 +59,7 @@ def client() -> Generator[Any, None, None]:
     from fastapi.testclient import TestClient
 
     from src.main import app
+
     with TestClient(app) as c:
         yield c
 
@@ -73,6 +70,7 @@ async def infrastructure_setup() -> AsyncIterator[None]:
     yield
     # Cleanup
     import ray
+
     if ray.is_initialized():
         ray.shutdown()
     await close_redis()
@@ -84,9 +82,12 @@ async def infrastructure_setup() -> AsyncIterator[None]:
 async def db_cleanup() -> AsyncIterator[None]:
     """Clean up database tables after tests."""
     from src.database.neon_client import acquire
+
     async with acquire() as conn:
         # Note: truncate tables as needed
-        await conn.execute("TRUNCATE TABLE validation_metrics, ml_experiments, scrape_runs, notifications, feature_snapshots CASCADE")
+        await conn.execute(
+            "TRUNCATE TABLE validation_metrics, ml_experiments, scrape_runs, notifications, feature_snapshots CASCADE"
+        )
     yield
 
 
@@ -96,10 +97,14 @@ async def test_user() -> dict[str, Any]:
     from uuid import uuid4
 
     from src.database.neon_client import acquire
+
     user_id = uuid4()
     async with acquire() as conn:
         await conn.execute(
             "INSERT INTO users (id, email, display_name, role) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
-            user_id, f"test_{user_id}@example.com", "Test User", "admin"
+            user_id,
+            f"test_{user_id}@example.com",
+            "Test User",
+            "admin",
         )
     return {"id": user_id}

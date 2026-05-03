@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.integration
-def test_websocket_connection(client: TestClient, test_user) -> None:
+def test_websocket_connection(client: TestClient, test_user: dict[str, Any]) -> None:
     """Verify that a WebSocket connection can be established and closed."""
     token = str(test_user["id"])
     with client.websocket_connect(f"/api/v1/ws/metrics?token={token}"):
@@ -25,7 +25,7 @@ def test_websocket_connection(client: TestClient, test_user) -> None:
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_websocket_redis_broadcast(client: TestClient, test_user) -> None:
+async def test_websocket_redis_broadcast(client: TestClient, test_user: dict[str, Any]) -> None:
     """Verify Redis pub/sub to WebSocket broadcast."""
 
     channel = "metrics"

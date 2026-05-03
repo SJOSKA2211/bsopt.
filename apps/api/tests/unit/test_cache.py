@@ -1,4 +1,5 @@
 from typing import Any
+
 """Unit tests for cache logic (Zero-Mock)."""
 from __future__ import annotations
 
@@ -25,7 +26,9 @@ class TestCacheDecorator:
         # So I should extract the key generation logic into a pure function and test that.
 
 
-def generate_cache_key(prefix: str, func_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:
+def generate_cache_key(
+    prefix: str, func_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]
+) -> str:
     """Pure function for key generation."""
     key_parts = [prefix, func_name]
     if args:

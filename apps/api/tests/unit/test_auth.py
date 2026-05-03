@@ -1,4 +1,5 @@
 """Unit tests for authentication dependencies."""
+
 from __future__ import annotations
 
 from uuid import uuid4

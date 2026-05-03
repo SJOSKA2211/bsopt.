@@ -1,10 +1,11 @@
 """Exhaustive unit tests for WebSocket manager and channels — Zero-Mock."""
+
 from __future__ import annotations
 
 import asyncio
 import contextlib
 import json
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -49,16 +50,16 @@ async def test_manager_full_lifecycle() -> None:
     ws1 = StubWebSocket()
 
     # Test invalid channel
-    await manager.connect(ws1, "invalid_channel")  # type: ignore
+    await manager.connect(cast("Any", ws1), "invalid_channel")
     assert ws1.closed
     assert ws1.close_code == 1003
 
     # Test valid connection
     user_id = "user_1"
-    await manager.connect(ws1, "metrics", user_id=user_id)  # type: ignore
+    await manager.connect(cast("Any", ws1), "metrics", user_id=user_id)
     assert ws1.accepted
-    assert ws1 in manager.active_connections["metrics"]
-    assert ws1 in manager.user_connections[user_id]
+    assert cast("Any", ws1) in manager.active_connections["metrics"]
+    assert cast("Any", ws1) in manager.user_connections[user_id]
 
     # Test broadcast
     await manager.broadcast("metrics", {"msg": "hi"})
@@ -66,21 +67,21 @@ async def test_manager_full_lifecycle() -> None:
 
     # Test broadcast failure cleanup
     ws_fail = StubWebSocket(fail_send=True)
-    await manager.connect(ws_fail, "metrics")  # type: ignore
+    await manager.connect(cast("Any", ws_fail), "metrics")
     await manager.broadcast("metrics", {"msg": "fail"})
     # ws_fail should be removed from active_connections
-    assert ws_fail not in manager.active_connections["metrics"]
+    assert cast("Any", ws_fail) not in manager.active_connections["metrics"]
 
     # Test personal message failure cleanup
     ws_fail_user = StubWebSocket(fail_send=True)
     user_id_2 = "user_2"
-    await manager.connect(ws_fail_user, "notifications", user_id=user_id_2)  # type: ignore
+    await manager.connect(cast("Any", ws_fail_user), "notifications", user_id=user_id_2)
     await manager.send_personal_message({"msg": "fail"}, user_id_2)
     assert user_id_2 not in manager.user_connections
 
     # Test disconnect
-    manager.disconnect(ws1, "metrics", user_id=user_id)
-    assert ws1 not in manager.active_connections["metrics"]
+    manager.disconnect(cast("Any", ws1), "metrics", user_id=user_id)
+    assert cast("Any", ws1) not in manager.active_connections["metrics"]
     assert user_id not in manager.user_connections
 
 
@@ -88,14 +89,15 @@ async def test_manager_full_lifecycle() -> None:
 @pytest.mark.asyncio
 async def test_channels_broadcast_helpers() -> None:
     from src.websocket import channels as channels_mod
+
     orig_manager = channels_mod.manager
     manager = ConnectionManager()
     channels_mod.manager = manager
 
     ws = StubWebSocket()
-    await manager.connect(ws, "metrics")  # type: ignore
-    await manager.connect(ws, "experiments")  # type: ignore
-    await manager.connect(ws, "scrapers")  # type: ignore
+    await manager.connect(cast("Any", ws), "metrics")
+    await manager.connect(cast("Any", ws), "experiments")
+    await manager.connect(cast("Any", ws), "scrapers")
 
     await broadcast_metric_update({"val": 1})
     await broadcast_experiment_update({"id": "exp1"})
@@ -110,14 +112,15 @@ async def test_channels_broadcast_helpers() -> None:
 @pytest.mark.asyncio
 async def test_redis_pubsub_listener_routing() -> None:
     from src.websocket import channels as channels_mod
+
     orig_manager = channels_mod.manager
     manager = ConnectionManager()
     channels_mod.manager = manager
 
     ws = StubWebSocket()
     user_id = "u2"
-    await manager.connect(ws, "metrics", user_id=user_id)  # type: ignore
-    await manager.connect(ws, "notifications", user_id=user_id)  # type: ignore
+    await manager.connect(cast("Any", ws), "metrics", user_id=user_id)
+    await manager.connect(cast("Any", ws), "notifications", user_id=user_id)
 
     redis = await get_redis()
     # Test with max_loops=100 to cover the loop
@@ -128,7 +131,9 @@ async def test_redis_pubsub_listener_routing() -> None:
         # 1. Direct channel message
         await redis.publish("metrics", json.dumps({"v": 1}))
         # 2. Notification message
-        await redis.publish("notifications", json.dumps({"user_id": user_id, "notification": {"m": "hi"}}))
+        await redis.publish(
+            "notifications", json.dumps({"user_id": user_id, "notification": {"m": "hi"}})
+        )
         # 3. bsopt:events message
         await redis.publish("bsopt:events", json.dumps({"channel": "metrics", "event": {"v": 2}}))
 
@@ -148,6 +153,7 @@ async def test_redis_pubsub_listener_routing() -> None:
 async def test_redis_pubsub_listener_error_handling() -> None:
     # Trigger exception path by publishing invalid JSON
     from src.websocket import channels as channels_mod
+
     orig_manager = channels_mod.manager
     manager = ConnectionManager()
     channels_mod.manager = manager
@@ -178,16 +184,16 @@ async def test_manager_edge_cases() -> None:
     await manager.broadcast("invalid", {"msg": "hi"})
 
     # 2. Disconnect from channel but websocket not in it (Line 55 partial)
-    manager.disconnect(ws, "metrics")  # type: ignore
+    manager.disconnect(cast("Any", ws), "metrics")
 
     # 3. Disconnect user: one removed, one remains (Line 65->68 False branch)
-    manager.user_connections["u1"] = [ws, ws2]  # type: ignore
-    manager.disconnect(ws, "metrics", user_id="u1")  # type: ignore
+    manager.user_connections["u1"] = [cast("Any", ws), cast("Any", ws2)]
+    manager.disconnect(cast("Any", ws), "metrics", user_id="u1")
     assert "u1" in manager.user_connections
     assert len(manager.user_connections["u1"]) == 1
 
     # 4. Disconnect user: last one removed (Line 65->66 True branch)
-    manager.disconnect(ws2, "metrics", user_id="u1")  # type: ignore
+    manager.disconnect(cast("Any", ws2), "metrics", user_id="u1")
     assert "u1" not in manager.user_connections
 
     # 5. send_personal_message to non-existent user (Line 91)
@@ -196,8 +202,8 @@ async def test_manager_edge_cases() -> None:
     # 6. Branch 101->100 cleanup dead in send_personal_message
     ws_dead = StubWebSocket(fail_send=True)
     ws_alive = StubWebSocket()
-    await manager.connect(ws_alive, "notifications", user_id="u4")  # type: ignore
-    await manager.connect(ws_dead, "notifications", user_id="u4")  # type: ignore
+    await manager.connect(cast("Any", ws_alive), "notifications", user_id="u4")
+    await manager.connect(cast("Any", ws_dead), "notifications", user_id="u4")
     await manager.send_personal_message({"msg": "alive"}, "u4")
     assert len(manager.user_connections["u4"]) == 1
 
@@ -211,11 +217,11 @@ async def test_manager_edge_cases() -> None:
         async def send_json(self, data: Any) -> None:
             # Manually remove from manager before returning/failing
             if self in self.manager.user_connections[self.user_id]:
-                self.manager.user_connections[self.user_id].remove(self)
+                self.manager.user_connections[self.user_id].remove(cast("Any", self))
             raise Exception("Fail")
 
     ws_self_rem = SelfRemovingWS(manager, "u5")
-    manager.user_connections["u5"] = [ws_self_rem]  # type: ignore
+    manager.user_connections["u5"] = [cast("Any", ws_self_rem)]
     await manager.send_personal_message({"msg": "die"}, "u5")
     assert "u5" not in manager.user_connections
 
@@ -225,6 +231,7 @@ async def test_manager_edge_cases() -> None:
 async def test_channels_binary_routing() -> None:
     # Coverage for lines 56, 60, 67, 84 in channels.py
     from src.websocket import channels as channels_mod
+
     manager = ConnectionManager()
     channels_mod.manager = manager
 
@@ -233,35 +240,32 @@ async def test_channels_binary_routing() -> None:
         def __init__(self) -> None:
             self.count = 0
 
-        async def subscribe(self, *args, **kwargs) -> None: pass
+        async def subscribe(self, *args: Any, **kwargs: Any) -> None:
+            pass
 
-        async def get_message(self, *args, **kwargs) -> None:
+        async def get_message(self, *args: Any, **kwargs: Any) -> dict[str, Any] | None:
             self.count += 1
             if self.count == 1:
-                return {
-                    "channel": b"metrics",
-                    "data": b'{"v": 1}'
-                }
+                return {"channel": b"metrics", "data": b'{"v": 1}'}
             elif self.count == 2:
                 # Test line 67: bsopt:events with missing target_channel
-                return {
-                    "channel": "bsopt:events",
-                    "data": json.dumps({"event": {"v": 2}})
-                }
+                return {"channel": "bsopt:events", "data": json.dumps({"event": {"v": 2}})}
             return None
 
-        async def unsubscribe(self) -> None: pass
+        async def unsubscribe(self) -> None:
+            pass
 
         async def aclose(self) -> None:
             # Test line 84: fail on aclose
             raise Exception("aclose failed")
 
     class MockRedis:
-        def pubsub(self) -> None: return MockPubSub()
+        def pubsub(self) -> Any:
+            return MockPubSub()
 
     # We need to monkeypatch get_redis in the module temporarily
     orig_get_redis = channels_mod.get_redis
-    fut = asyncio.Future()
+    fut: asyncio.Future[Any] = asyncio.Future()
     fut.set_result(MockRedis())
     channels_mod.get_redis = lambda: fut  # type: ignore
 

@@ -1,4 +1,5 @@
 """Main FastAPI application for Bsopt — Phase 10."""
+
 from __future__ import annotations
 
 import asyncio
@@ -93,5 +94,5 @@ app.include_router(downloads.router, prefix="/api/v1")
 
 
 @app.get("/")
-async def root() -> None:
+async def root() -> dict[str, str]:
     return {"message": "Welcome to Bsopt API", "docs": "/docs"}

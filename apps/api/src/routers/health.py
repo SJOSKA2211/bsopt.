@@ -1,4 +1,5 @@
 """Health check router for monitoring service status — Python 3.14."""
+
 from __future__ import annotations
 
 import time
@@ -28,7 +29,7 @@ async def health_check() -> dict[str, str]:
     # Check Redis
     try:
         redis = await get_redis()
-        await redis.ping()
+        await redis.ping()  # type: ignore[misc]
         status["redis"] = "connected"
     except Exception as exc:
         status["redis"] = f"error: {exc!s}"

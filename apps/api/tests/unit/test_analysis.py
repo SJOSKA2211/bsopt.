@@ -1,4 +1,5 @@
 """Unit tests for analysis modules — Python 3.14."""
+
 from __future__ import annotations
 
 import numpy as np

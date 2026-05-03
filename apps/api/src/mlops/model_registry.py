@@ -1,4 +1,5 @@
 """Model registry management using MLflow and NeonDB."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -18,7 +19,9 @@ class ModelRegistry:
         self.tracking_uri = tracking_uri
         mlflow.set_tracking_uri(tracking_uri)
 
-    async def register_model(self, name: str, version: str, artifact_uri: str, metrics: dict[str, Any]) -> None:
+    async def register_model(
+        self, name: str, version: str, artifact_uri: str, metrics: dict[str, Any]
+    ) -> None:
         """Register a model in the database registry."""
         try:
             # In a real scenario, we might also call mlflow.register_model

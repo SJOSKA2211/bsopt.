@@ -1,6 +1,8 @@
 """Integration tests for the FastAPI application — Zero-Mock."""
+
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -9,9 +11,12 @@ from httpx import ASGITransport, AsyncClient
 from src.database.repository import save_user
 from src.main import app
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
 
 @pytest.fixture
-async def client() -> None:
+async def client() -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
@@ -38,7 +43,7 @@ async def test_pricing_flow(client: AsyncClient) -> None:
         "volatility": 0.2,
         "risk_free_rate": 0.05,
         "option_type": "call",
-        "method_type": "analytical"
+        "method_type": "analytical",
     }
     response = await client.post("/api/v1/pricing/", json=payload, headers=headers)
     assert response.status_code == 200
@@ -66,7 +71,7 @@ async def test_mlops_flow(client: AsyncClient) -> None:
         "name": f"test_model_{uuid4().hex[:8]}",
         "version": "1.2.3",
         "artifact_uri": "s3://test/v1",
-        "metrics": {"rmse": 0.01}
+        "metrics": {"rmse": 0.01},
     }
     response = await client.post("/api/v1/mlops/register", json=payload, headers=headers)
     assert response.status_code == 200
@@ -75,6 +80,6 @@ async def test_mlops_flow(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/mlops/drift/check?method_type=analytical&baseline_mape=0.1",
         json=[str(user_id)],
-        headers=headers
+        headers=headers,
     )
     assert response.status_code == 200

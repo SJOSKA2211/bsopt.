@@ -1,10 +1,12 @@
 """Unit tests for notification system — Zero-Mock."""
+
 from __future__ import annotations
 
 import asyncio
 import base64
 import json
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 from uuid import uuid4
@@ -24,18 +26,18 @@ settings = get_settings()
 
 
 @asynccontextmanager
-async def run_fake_server(port: int) -> None:
+async def run_fake_server(port: int) -> AsyncIterator[None]:
     app = FastAPI()
 
     @app.post("/emails")
-    async def fake_email(request: Request) -> None:
+    async def fake_email(request: Request) -> JSONResponse:
         auth = request.headers.get("Authorization", "")
         if "invalid" in auth:
             return JSONResponse(content={"error": "unauthorized"}, status_code=401)
         return JSONResponse(content={"id": "fake_email_id"}, status_code=201)
 
     @app.post("/push")
-    async def fake_push(request: Request) -> None:
+    async def fake_push(request: Request) -> JSONResponse:
         return JSONResponse(content={"status": "ok"}, status_code=201)
 
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
@@ -52,7 +54,7 @@ async def run_fake_server(port: int) -> None:
 
 class StubManager:
     def __init__(self) -> None:
-        self.messages = []
+        self.messages: list[tuple[str, dict[str, Any]]] = []
 
     async def send_personal_message(self, message: dict[str, Any], user_id: str) -> None:
         self.messages.append((user_id, message))
@@ -60,7 +62,7 @@ class StubManager:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_notification_routing_logic(db_cleanup) -> None:
+async def test_notification_routing_logic(db_cleanup: Any) -> None:
     manager = StubManager()
     router = NotificationRouter(websocket_manager=manager)  # type: ignore
     user_id = str(uuid4())
@@ -74,7 +76,7 @@ async def test_notification_routing_logic(db_cleanup) -> None:
         # Setup for push and email success in hierarchy
         sub = {
             "endpoint": "http://127.0.0.1:8085/push",
-            "keys": {"auth": "authsecretauthsecret", "p256dh": "p256dhkeyp256dhkey"}
+            "keys": {"auth": "authsecretauthsecret", "p256dh": "p256dhkeyp256dhkey"},
         }
         await save_user_push_subscription(user_id, json.dumps(sub))
 
@@ -174,7 +176,7 @@ async def test_email_notifications_paths() -> None:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_push_notifications_paths(db_cleanup) -> None:
+async def test_push_notifications_paths(db_cleanup: Any) -> None:
     user_id = str(uuid4())
     n = Notification(user_id=user_id, title="T", body="B")
 
@@ -187,7 +189,9 @@ async def test_push_notifications_paths(db_cleanup) -> None:
 
     # Set dummy keys
     valid_key = "2zYlXaU6HDHgVwpDUNv71bOsAFFFiapma61UFXI2u04"
-    valid_pub = "BBlxXfnhLDC5uGv9Y4L7DTTVC4tPRZ1tQnz1MaKHvSFJptz0A_W3xx3oUfIm9g48FPC8ekgRTIgddGiBB0c3f2E"
+    valid_pub = (
+        "BBlxXfnhLDC5uGv9Y4L7DTTVC4tPRZ1tQnz1MaKHvSFJptz0A_W3xx3oUfIm9g48FPC8ekgRTIgddGiBB0c3f2E"
+    )
     settings.gh_vapid_private_key = valid_key
     settings.gh_vapid_public_key = valid_pub
 
@@ -200,8 +204,8 @@ async def test_push_notifications_paths(db_cleanup) -> None:
         "endpoint": "http://127.0.0.1:8085/push",
         "keys": {
             "auth": "lyEY8grzKIQloWKKBys15g",
-            "p256dh": "BNzmS1vIAqFXoPvV7lnTdV7XISDeH3jTmQdnERXTi77jv1SCj8MeQrS7HTHLjlxLm66NoIwV3_5pW41t4IIHYnY"
-        }
+            "p256dh": "BNzmS1vIAqFXoPvV7lnTdV7XISDeH3jTmQdnERXTi77jv1SCj8MeQrS7HTHLjlxLm66NoIwV3_5pW41t4IIHYnY",
+        },
     }
     await save_user_push_subscription(user_id, json.dumps(sub))
 
@@ -216,8 +220,8 @@ async def test_push_notifications_paths(db_cleanup) -> None:
             "endpoint": "http://127.0.0.1:8085/emails",  # /emails returns 401 with invalid auth
             "keys": {
                 "auth": "invalid_auth_token_for_fake",
-                "p256dh": "BNzmS1vIAqFXoPvV7lnTdV7XISDeH3jTmQdnERXTi77jv1SCj8MeQrS7HTHLjlxLm66NoIwV3_5pW41t4IIHYnY"
-            }
+                "p256dh": "BNzmS1vIAqFXoPvV7lnTdV7XISDeH3jTmQdnERXTi77jv1SCj8MeQrS7HTHLjlxLm66NoIwV3_5pW41t4IIHYnY",
+            },
         }
         await save_user_push_subscription(user_id, json.dumps(sub_bad_endpoint))
         res = await send_push_notification(n)

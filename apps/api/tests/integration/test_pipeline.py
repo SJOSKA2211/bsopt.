@@ -20,7 +20,9 @@ async def test_options_pipeline_csv_ingestion() -> None:
         "100.0,100.0,1.0,0.2,0.05,call,2024-01-01,10.0,11.0\n"
     )
 
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".csv", delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8", mode="w", suffix=".csv", delete=False
+    ) as tmp:
         tmp.write(csv_content)
         tmp_path = tmp.name
 
@@ -38,6 +40,7 @@ async def test_options_pipeline_csv_ingestion() -> None:
 async def test_options_pipeline_gzip_ingestion() -> None:
     """Verify that the pipeline processes a GZipped CSV file."""
     import gzip
+
     csv_content = (
         "underlying_price,strike_price,time_to_expiry,volatility,risk_free_rate,option_type,trade_date,bid,ask\n"
         "100.0,105.0,0.5,0.25,0.03,put,2024-02-01,5.0,5.5\n"
@@ -62,6 +65,7 @@ async def test_options_pipeline_gzip_ingestion() -> None:
 async def test_options_pipeline_json_ingestion() -> None:
     """Verify that the pipeline processes a JSON file."""
     import json
+
     data = [
         {
             "underlying_price": 110.0,
@@ -72,11 +76,13 @@ async def test_options_pipeline_json_ingestion() -> None:
             "option_type": "call",
             "trade_date": "2024-03-01",
             "bid": 8.0,
-            "ask": 8.5
+            "ask": 8.5,
         }
     ]
 
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".json", delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8", mode="w", suffix=".json", delete=False
+    ) as tmp:
         json.dump(data, tmp)
         tmp_path = tmp.name
 
@@ -93,7 +99,9 @@ async def test_options_pipeline_json_ingestion() -> None:
 @pytest.mark.asyncio
 async def test_options_pipeline_invalid_file() -> None:
     """Verify that the pipeline handles corrupted or invalid files gracefully."""
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".csv", delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8", mode="w", suffix=".csv", delete=False
+    ) as tmp:
         tmp.write("not,a,valid,csv\ncorrupted,data")
         tmp_path = tmp.name
 
@@ -113,7 +121,15 @@ async def test_options_pipeline_json_gz_ingestion() -> None:
     """Verify that the pipeline processes a GZipped JSON file."""
     import gzip
     import json
-    data = {"underlying_price": 100.0, "strike_price": 100.0, "time_to_expiry": 1.0, "volatility": 0.2, "risk_free_rate": 0.05, "option_type": "call"}
+
+    data = {
+        "underlying_price": 100.0,
+        "strike_price": 100.0,
+        "time_to_expiry": 1.0,
+        "volatility": 0.2,
+        "risk_free_rate": 0.05,
+        "option_type": "call",
+    }
 
     with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
         with gzip.open(tmp.name, "wt", encoding="utf-8") as f:

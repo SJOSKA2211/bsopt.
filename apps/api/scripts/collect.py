@@ -47,6 +47,6 @@ async def collect_market_data(market: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--market", required=True, help="Market to scrape (e.g., spy)")
-    args = parser.parse_argument()
+    args = parser.parse_args()
 
     asyncio.run(collect_market_data(args.market))

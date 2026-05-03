@@ -1,4 +1,5 @@
 """Pricing router for single and batch option pricing — Python 3.14."""
+
 from __future__ import annotations
 
 import asyncio
@@ -24,17 +25,21 @@ class PricingRequest(BaseModel):
     volatility: float = Field(..., gt=0)
     risk_free_rate: float = Field(..., gt=0)
     option_type: str = Field(..., pattern="^(call|put)$")
-    method_type: str = Field("analytical", pattern="^(analytical|explicit_fdm|implicit_fdm|crank_nicolson|standard_mc|antithetic_mc|control_variate_mc|quasi_mc|binomial_crr|trinomial|binomial_crr_richardson|trinomial_richardson)$")
+    method_type: str = Field(
+        "analytical",
+        pattern="^(analytical|explicit_fdm|implicit_fdm|crank_nicolson|standard_mc|antithetic_mc|control_variate_mc|quasi_mc|binomial_crr|trinomial|binomial_crr_richardson|trinomial_richardson)$",
+    )
 
 
 @router.post("/")
 async def calculate_price(
-    request: PricingRequest,
-    user_id: str = Depends(get_current_user_id)
+    request: PricingRequest, user_id: str = Depends(get_current_user_id)
 ) -> dict[str, Any]:
     """Calculate option price using the specified method."""
     settings = get_settings()
-    runner = RayExperimentRunner(ray_address=settings.ray_address, mlflow_tracking_uri=settings.mlflow_tracking_uri)
+    runner = RayExperimentRunner(
+        ray_address=settings.ray_address, mlflow_tracking_uri=settings.mlflow_tracking_uri
+    )
 
     try:
         # Retry logic for Ray connection
@@ -54,9 +59,7 @@ async def calculate_price(
 
         # Save params to DB
         opt_id = await save_option_parameters(
-            **param_dict,
-            market_source="api_request",
-            created_by=user_id
+            **param_dict, market_source="api_request", created_by=user_id
         )
 
         # Run on Ray (or locally if ray_address is empty)
@@ -70,14 +73,14 @@ async def calculate_price(
             computed_price=result["computed_price"],
             parameter_set=result["parameter_set"],
             exec_seconds=result["exec_seconds"],
-            converged=result["converged"]
+            converged=result["converged"],
         )
 
         return {
             "option_id": opt_id,
             "computed_price": result["computed_price"],
             "exec_seconds": result["exec_seconds"],
-            "method": method
+            "method": method,
         }
     except Exception as exc:
         logger.error("pricing_calculation_failed", error=str(exc))

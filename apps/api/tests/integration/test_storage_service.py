@@ -1,4 +1,5 @@
 """Integration tests for storage service — Phase 1."""
+
 from __future__ import annotations
 
 import gzip
@@ -42,6 +43,7 @@ async def test_upload_with_compression() -> None:
 
     # Check if object exists with .gz extension
     from src.storage.minio_client import get_minio
+
     async with get_minio() as client:
         res = await client.get_object(Bucket=bucket, Key=f"{object_name}.gz")
         body = await res["Body"].read()
@@ -61,6 +63,7 @@ async def test_upload_already_gzipped_extension() -> None:
     await storage.upload_file(bucket, object_name, data)
 
     from src.storage.minio_client import get_minio
+
     async with get_minio() as client:
         # Should NOT be manual.gz.gz
         res = await client.get_object(Bucket=bucket, Key=object_name)

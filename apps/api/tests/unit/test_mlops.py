@@ -1,8 +1,10 @@
 """Exhaustive unit and integration tests for MLOps components — Zero-Mock."""
+
 from __future__ import annotations
 
 import os
 from datetime import date
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -12,17 +14,20 @@ from src.mlops.drift_detector import check_model_drift
 from src.mlops.feature_store import FeatureStore
 from src.mlops.mlflow_tracker import MLflowTracker
 from src.mlops.model_registry import ModelRegistry
-from src.mlops.ray_runner import RayExperimentRunner, price_remote
-from src.notifications.hierarchy import NotificationRouter
+from src.mlops.ray_runner import RayExperimentRunner
 
 
 @pytest.fixture
-def mlflow_uri() -> None:
+def mlflow_uri() -> str:
     return os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
 
 
+# ── MLflow Tracker Tests ────────────────────────────────────────────
+
+
 @pytest.mark.unit
-def test_mlflow_tracker_logging(mlflow_uri) -> None:
+def test_mlflow_tracker_logging_with_tags(mlflow_uri: str) -> None:
+    """Cover the tags is not None branch."""
     tracker = MLflowTracker(mlflow_uri)
     assert tracker.tracking_uri == mlflow_uri
     exp_name = f"test_exp_{uuid4().hex[:8]}"
@@ -31,17 +36,36 @@ def test_mlflow_tracker_logging(mlflow_uri) -> None:
         run_name="test_run",
         params={"p1": 1.0},
         metrics={"m1": 0.5},
-        tags={"t1": "v1"}
+        tags={"t1": "v1"},
+    )
+    assert isinstance(run_id, str)
+
+
+@pytest.mark.unit
+def test_mlflow_tracker_logging_without_tags(mlflow_uri: str) -> None:
+    """Cover the tags is None branch (default parameter)."""
+    tracker = MLflowTracker(mlflow_uri)
+    exp_name = f"test_exp_{uuid4().hex[:8]}"
+    run_id = tracker.log_pricing_run(
+        experiment_name=exp_name,
+        run_name="test_run_no_tags",
+        params={"p1": 2.0},
+        metrics={"m1": 0.3},
     )
     assert isinstance(run_id, str)
 
 
 @pytest.mark.unit
 def test_mlflow_tracker_real_failure() -> None:
+    """Cover the except branch in log_pricing_run."""
     tracker = MLflowTracker("http://invalid_url_that_fails_fast")
     import contextlib
+
     with contextlib.suppress(Exception):
         tracker.log_pricing_run(None, None, None, None)  # type: ignore
+
+
+# ── Feature Store Tests ─────────────────────────────────────────────
 
 
 @pytest.mark.unit
@@ -57,17 +81,47 @@ async def test_feature_store_persistence() -> None:
 
 
 @pytest.mark.unit
+def test_feature_engineering() -> None:
+    store = FeatureStore()
+    feats = store.engineer_features(100, 100, 1, 0.2, 0.05)
+    assert feats["moneyness"] == pytest.approx(1.0)
+    assert feats["intrinsic_value"] == pytest.approx(0.0)
+
+
+# ── Price Logic (pure function, no Ray) ──────────────────────────────
+
+
+@pytest.mark.unit
 def test_price_logic_direct() -> None:
     from src.mlops.ray_runner import _price_logic
-    params = {"underlying_price": 100, "strike_price": 100, "time_to_expiry": 1, "volatility": 0.2, "risk_free_rate": 0.05, "option_type": "call"}
+
+    params = {
+        "underlying_price": 100,
+        "strike_price": 100,
+        "time_to_expiry": 1,
+        "volatility": 0.2,
+        "risk_free_rate": 0.05,
+        "option_type": "call",
+    }
     res = _price_logic(params, "analytical")
     assert res["computed_price"] > 0
     assert res["method_type"] == "BlackScholesAnalytical"
 
 
 @pytest.mark.unit
-def test_ray_runner_distributed() -> None:
-    # 1. Test normal local init
+def test_ray_runner_invalid_method() -> None:
+    from src.mlops.ray_runner import _price_logic
+
+    with pytest.raises(ValueError, match="Unknown method"):
+        _price_logic({"p": 1}, "invalid")
+
+
+# ── Ray Runner Tests ────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_ray_runner_local_init_and_grid() -> None:
+    """Test normal local init → already-initialized branch → run_grid."""
     try:
         if ray.is_initialized():
             ray.shutdown()
@@ -75,61 +129,111 @@ def test_ray_runner_distributed() -> None:
 
         runner = RayExperimentRunner(
             ray_address="",
-            mlflow_tracking_uri="http://127.0.0.1:5000"
+            mlflow_tracking_uri="http://127.0.0.1:5000",
+            num_cpus=1,
         )
+        # First connect: exercises the `not self.ray_address` → ray.init() branch
         runner.connect()
         assert ray.is_initialized()
 
-        # 2. Test already initialized branch
+        # Second connect: exercises the `ray.is_initialized() → True` early return
         runner.connect()
 
-        # 3. Test _connection_failed = True branch
-        RayExperimentRunner._connection_failed = True
-        ray.shutdown()
-        runner.connect()
-        assert ray.is_initialized()
-
-        params = {"underlying_price": 100, "strike_price": 100, "time_to_expiry": 1, "volatility": 0.2, "risk_free_rate": 0.05, "option_type": "call"}
-        param_grid = [(params, "analytical")]
-        results = runner.run_grid("test_ray_grid", param_grid)
+        # Run grid: exercises run_grid + price_remote.remote
+        params = {
+            "underlying_price": 100,
+            "strike_price": 100,
+            "time_to_expiry": 1,
+            "volatility": 0.2,
+            "risk_free_rate": 0.05,
+            "option_type": "call",
+        }
+        results = runner.run_grid("test_ray_grid", [(params, "analytical")])
         assert len(results) == 1
+        assert results[0]["computed_price"] > 0
     finally:
         if ray.is_initialized():
             ray.shutdown()
 
 
 @pytest.mark.unit
-def test_ray_runner_connection_failure_path() -> None:
-    # 4. Test exception path and shutdown coverage
+def test_ray_runner_connection_failed_branch() -> None:
+    """Test the _connection_failed=True → local fallback branch."""
     try:
-        print(f"Before shutdown: is_initialized={ray.is_initialized()}")
         if ray.is_initialized():
             ray.shutdown()
+        RayExperimentRunner._connection_failed = True
+
+        runner = RayExperimentRunner(
+            ray_address="",
+            mlflow_tracking_uri="http://127.0.0.1:5000",
+            num_cpus=1,
+        )
+        runner.connect()
+        assert ray.is_initialized()
+    finally:
+        RayExperimentRunner._connection_failed = False
+        if ray.is_initialized():
+            ray.shutdown()
+
+
+@pytest.mark.unit
+def test_ray_runner_exception_fallback() -> None:
+    """Test the except path: invalid address → exception → local fallback."""
+    try:
+        if ray.is_initialized():
+            ray.shutdown()
+        RayExperimentRunner._connection_failed = False
 
         runner = RayExperimentRunner(
             ray_address="invalid://address:9999",
             mlflow_tracking_uri="",
-            num_cpus=1
+            num_cpus=1,
         )
-
-        RayExperimentRunner._connection_failed = False
-        print(f"Before connect: _connection_failed={RayExperimentRunner._connection_failed}")
         runner.connect()
-        print(f"After connect: _connection_failed={RayExperimentRunner._connection_failed}")
+        # After exception, _connection_failed should be True and Ray should be local
         assert RayExperimentRunner._connection_failed is True
+        assert ray.is_initialized()
     finally:
+        RayExperimentRunner._connection_failed = False
         if ray.is_initialized():
             ray.shutdown()
 
 
 @pytest.mark.unit
+def test_ray_runner_with_address() -> None:
+    """Test the `if self.ray_address:` → ray.init(address=...) branch."""
+    try:
+        if ray.is_initialized():
+            ray.shutdown()
+        RayExperimentRunner._connection_failed = False
+
+        # Use "local" which is a valid ray address for local mode
+        runner = RayExperimentRunner(
+            ray_address="local",
+            mlflow_tracking_uri="http://127.0.0.1:5000",
+            num_cpus=1,
+        )
+        runner.connect()
+        assert ray.is_initialized()
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
+
+
+# ── Drift Detector Tests ────────────────────────────────────────────
+
+
+@pytest.mark.unit
 @pytest.mark.asyncio
-async def test_drift_detection_flow(db_cleanup) -> None:
+async def test_drift_detection_flow(db_cleanup: Any) -> None:
     from src.database.repository import (
         save_method_result,
         save_option_parameters,
         save_validation_metrics,
     )
+    from src.notifications.hierarchy import NotificationRouter
+
     market_unique = f"drift_{uuid4().hex[:8]}"
     opt_id = await save_option_parameters(120, 120, 1, 0.2, 0.05, "call", market_unique)
     res_id = await save_method_result(opt_id, "analytical", 10.45, {"market": market_unique}, 0.1)
@@ -137,17 +241,24 @@ async def test_drift_detection_flow(db_cleanup) -> None:
 
     router = NotificationRouter()
     user_id = str(uuid4())
-    drifted = await check_model_drift("analytical", baseline_mape=0.5, router=router, user_ids=[user_id])
+    drifted = await check_model_drift(
+        "analytical", baseline_mape=0.5, router=router, user_ids=[user_id]
+    )
     assert drifted is False
 
     await save_validation_metrics(opt_id, res_id, 5.0, 10.0, 5.0)
-    drifted = await check_model_drift("analytical", baseline_mape=0.5, router=router, user_ids=[user_id])
+    drifted = await check_model_drift(
+        "analytical", baseline_mape=0.5, router=router, user_ids=[user_id]
+    )
     assert drifted is True
+
+
+# ── Model Registry Tests ────────────────────────────────────────────
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_model_registry_operations(mlflow_uri) -> None:
+async def test_model_registry_operations(mlflow_uri: str) -> None:
     registry = ModelRegistry(mlflow_uri)
     name = f"test_model_{uuid4().hex[:8]}"
     version = "1.0.0"
@@ -160,26 +271,12 @@ async def test_model_registry_operations(mlflow_uri) -> None:
 
 
 @pytest.mark.unit
-def test_feature_engineering() -> None:
-    store = FeatureStore()
-    f = store.engineer_features(100, 100, 1, 0.2, 0.05)
-    assert f["moneyness"] == pytest.approx(1.0)
-    assert f["intrinsic_value"] == pytest.approx(0.0)
-
-
-@pytest.mark.unit
 @pytest.mark.asyncio
-async def test_model_registry_failure(mlflow_uri) -> None:
+async def test_model_registry_failure(mlflow_uri: str) -> None:
     registry = ModelRegistry(mlflow_uri)
     with pytest.raises(Exception):
         await registry.register_model(None, None, None, None)  # type: ignore
     import contextlib
+
     with contextlib.suppress(Exception):
         await registry.get_latest_model("nonexistent")
-
-
-@pytest.mark.unit
-def test_ray_runner_invalid_method() -> None:
-    func = getattr(price_remote, "_function", price_remote)
-    with pytest.raises(ValueError, match="Unknown method"):
-        func({"p": 1}, "invalid")

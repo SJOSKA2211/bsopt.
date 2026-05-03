@@ -1,4 +1,5 @@
 """Unit tests for watchdog handler — Phase 3."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -74,6 +75,7 @@ def test_handler_sync_loop_fallback(tmp_path: Path) -> None:
 @pytest.mark.unit
 def test_start_watchdog(tmp_path: Path) -> None:
     from src.data.watchdog_handler import start_watchdog
+
     observer = start_watchdog(str(tmp_path / "watch"))
     assert observer.is_alive()
     observer.stop()

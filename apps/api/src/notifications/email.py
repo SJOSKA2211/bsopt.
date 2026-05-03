@@ -81,7 +81,9 @@ async def send_transactional_email(to: str, subject: str, body: str) -> bool:
             if response.status_code in {200, 201, 202, 204}:
                 return True
             else:
-                logger.error("transactional_email_failed", status=response.status_code, body=response.text)
+                logger.error(
+                    "transactional_email_failed", status=response.status_code, body=response.text
+                )
                 return False
     except Exception as exc:
         logger.error("transactional_email_exception", error=str(exc))

@@ -1,4 +1,5 @@
 """RabbitMQ task consumers."""
+
 from __future__ import annotations
 
 import json
@@ -37,6 +38,7 @@ async def start_consumer(queue_name: str, callback: Callable[[dict[str, Any]], A
 
 class ScraperConsumer:
     """Specialized consumer for scraper tasks."""
+
     def __init__(self, callback: Callable[[dict[str, Any]], Any]) -> None:
         self.callback = callback
 

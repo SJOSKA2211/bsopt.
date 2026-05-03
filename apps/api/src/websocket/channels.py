@@ -13,6 +13,16 @@ from src.websocket.manager import manager
 
 logger = structlog.get_logger(__name__)
 
+__all__ = [
+    "broadcast_experiment_update",
+    "broadcast_metric_update",
+    "broadcast_scraper_update",
+    "get_redis",
+    "manager",
+    "send_user_notification",
+    "start_redis_pubsub_listener",
+]
+
 
 async def broadcast_metric_update(metric_data: dict[str, Any]) -> None:
     """Broadcast real-time metric updates to the 'metrics' channel."""

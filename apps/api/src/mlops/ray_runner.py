@@ -2,25 +2,23 @@
 
 from __future__ import annotations
 
-from itertools import starmap
 from typing import Any
 
 import mlflow
 import ray
 import structlog
 
-from src.methods.base import OptionParams
 from src.metrics import RAY_CLUSTER_CPUS, RAY_TASKS_COMPLETED, RAY_TASKS_SUBMITTED
+from itertools import starmap
 
 logger = structlog.get_logger(__name__)
 
 
 def _price_logic(params_dict: dict[str, Any], method_name: str) -> dict[str, Any]:
     """Core pricing logic extracted for unit testing without Ray."""
-    # Dynamic method import — no global state pollution between workers
     import importlib
 
-    module_map = {
+    module_map: dict[str, str] = {
         "analytical": "src.methods.analytical",
         "explicit_fdm": "src.methods.finite_difference.explicit",
         "implicit_fdm": "src.methods.finite_difference.implicit",
@@ -57,6 +55,9 @@ def _price_logic(params_dict: dict[str, Any], method_name: str) -> dict[str, Any
     module = importlib.import_module(module_path)
     cls_name = cls_map.get(method_name, method_name)
     pricer_cls = getattr(module, cls_name)
+
+    from src.methods.base import OptionParams
+
     params = OptionParams(**params_dict)
     result = pricer_cls().price(params)
     return {
@@ -75,7 +76,9 @@ def price_remote(params_dict: dict[str, Any], method_name: str) -> dict[str, Any
 
 
 class RayExperimentRunner:
-    _connection_failed = False
+    """Manages Ray cluster connection and distributed experiment execution."""
+
+    _connection_failed: bool = False
 
     def __init__(self, ray_address: str, mlflow_tracking_uri: str, **ray_kwargs: Any) -> None:
         self.ray_address = ray_address
@@ -83,6 +86,7 @@ class RayExperimentRunner:
         self.ray_kwargs = ray_kwargs
 
     def connect(self) -> None:
+        """Connect to Ray cluster; fallback to local on failure."""
         if not ray.is_initialized():
             if RayExperimentRunner._connection_failed:
                 ray.init(ignore_reinit_error=True, **self.ray_kwargs)
@@ -90,16 +94,24 @@ class RayExperimentRunner:
 
             try:
                 if self.ray_address:
-                    ray.init(address=self.ray_address, ignore_reinit_error=True, **self.ray_kwargs)
+                    ray.init(
+                        address=self.ray_address,
+                        ignore_reinit_error=True,
+                        **self.ray_kwargs,
+                    )
                 else:
                     ray.init(ignore_reinit_error=True, **self.ray_kwargs)
             except Exception as exc:
                 logger.warning("ray_remote_connect_failed", error=str(exc), fallback="local")
                 RayExperimentRunner._connection_failed = True
                 ray.init(ignore_reinit_error=True, **self.ray_kwargs)
+
+        self._report_cluster_status()
+
+    def _report_cluster_status(self) -> None:
+        """Read cluster resources and configure MLflow tracking URI."""
         from typing import cast
 
-        # Use getattr and cast to Any to bypass Mypy's disallow-untyped-calls for the Ray library
         cluster_func = cast("Any", ray.cluster_resources)
         cluster_resources = cast("dict[str, float]", cluster_func())
         RAY_CLUSTER_CPUS.set(float(cluster_resources.get("CPU", 0)))
@@ -109,7 +121,7 @@ class RayExperimentRunner:
     def run_grid(
         self,
         experiment_name: str,
-        param_grid: list[tuple[dict[str, Any], str]],  # (params, method_name)
+        param_grid: list[tuple[dict[str, Any], str]],
     ) -> list[dict[str, Any]]:
         """Run all (params, method) pairs in parallel. Log to MLflow."""
         mlflow.set_experiment(experiment_name)

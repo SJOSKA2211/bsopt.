@@ -30,7 +30,9 @@ async def get_user_by_email(email: str) -> dict[str, str | UUID] | None:
         return dict(row) if row else None
 
 
-async def save_user(user_id: UUID | str, email: str, display_name: str, role: str = "researcher") -> None:
+async def save_user(
+    user_id: UUID | str, email: str, display_name: str, role: str = "researcher"
+) -> None:
     """Upsert a user record."""
     async with acquire() as conn:
         await conn.execute(
@@ -63,7 +65,9 @@ async def get_user_push_subscriptions(user_id: str) -> list[str]:
     return []
 
 
-async def save_user_push_subscription(user_id: str, subscription_info: str | dict[str, Any]) -> None:
+async def save_user_push_subscription(
+    user_id: str, subscription_info: str | dict[str, Any]
+) -> None:
     """Add a push subscription to the user's notification preferences."""
     from uuid import UUID
 

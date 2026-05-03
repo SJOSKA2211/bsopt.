@@ -1,4 +1,5 @@
 """WebSocket router for real-time communication — Python 3.14."""
+
 from __future__ import annotations
 
 import structlog
@@ -12,14 +13,11 @@ router = APIRouter(prefix="/ws", tags=["WebSocket"])
 
 
 @router.websocket("/{channel}")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    channel: str,
-    token: str = Query(...)
-) -> None:
+async def websocket_endpoint(websocket: WebSocket, channel: str, token: str = Query(...)) -> None:
     """Handle WebSocket connections with token-based authentication."""
     # We use Query(token) because standard headers are hard for browser WebSockets
     from src.auth.dependencies import MockCredentials
+
     try:
         user = await get_current_user(MockCredentials(token))  # type: ignore
         user_id = str(user["id"])

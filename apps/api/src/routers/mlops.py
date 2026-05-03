@@ -1,4 +1,5 @@
 """MLOps router for model registry and drift detection — Python 3.14."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -24,20 +25,17 @@ class ModelRegistrationRequest(BaseModel):
 
 
 @router.get("/status")
-async def get_mlops_status(
-    user_id: str = Depends(get_current_user_id)
-) -> dict[str, Any]:
+async def get_mlops_status(user_id: str = Depends(get_current_user_id)) -> dict[str, Any]:
     """Get status of MLOps infrastructure."""
     return {
         "ray": "connected" if ray.is_initialized() else "disconnected",
-        "mlflow": "reachable"  # Basic check
+        "mlflow": "reachable",  # Basic check
     }
 
 
 @router.post("/register")
 async def register_model(
-    request: ModelRegistrationRequest,
-    admin_user: dict[str, Any] = Depends(get_admin_user)
+    request: ModelRegistrationRequest, admin_user: dict[str, Any] = Depends(get_admin_user)
 ) -> dict[str, Any]:
     """Register a new model version."""
     settings = get_settings()
@@ -53,14 +51,11 @@ async def trigger_drift_check(
     method_type: str = Query(...),
     baseline_mape: float = Query(...),
     user_ids: list[str] = Body(...),
-    admin_user: dict[str, Any] = Depends(get_admin_user)
+    admin_user: dict[str, Any] = Depends(get_admin_user),
 ) -> dict[str, Any]:
     """Trigger a manual drift check."""
     router_notif = NotificationRouter()
     drifted = await check_model_drift(
-        method_type=method_type,
-        baseline_mape=baseline_mape,
-        router=router_notif,
-        user_ids=user_ids
+        method_type=method_type, baseline_mape=baseline_mape, router=router_notif, user_ids=user_ids
     )
     return {"method_type": method_type, "drift_detected": drifted}

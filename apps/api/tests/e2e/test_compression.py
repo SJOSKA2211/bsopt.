@@ -34,7 +34,7 @@ async def test_gzip_compression() -> None:
             "time_to_expiry": 1.0,
             "volatility": 0.2,
             "risk_free_rate": 0.05,
-            "option_type": "call"
+            "option_type": "call",
         }
 
         headers = {"Accept-Encoding": "gzip"}
@@ -55,7 +55,7 @@ async def test_brotli_compression() -> None:
             "time_to_expiry": 1.0,
             "volatility": 0.2,
             "risk_free_rate": 0.05,
-            "option_type": "call"
+            "option_type": "call",
         }
 
         headers = {"Accept-Encoding": "br"}

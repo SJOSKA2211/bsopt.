@@ -1,4 +1,5 @@
 """Unit tests for scraper factory."""
+
 from __future__ import annotations
 
 import pytest

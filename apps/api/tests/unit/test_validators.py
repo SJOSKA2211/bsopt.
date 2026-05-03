@@ -77,11 +77,7 @@ def test_option_parameter_validation_invalid_values() -> None:
 
 @pytest.mark.unit
 def test_option_parameter_multi_error_collection() -> None:
-    data = {
-        "underlying_price": -100,
-        "volatility": -0.2,
-        "option_type": "binary"
-    }
+    data = {"underlying_price": -100, "volatility": -0.2, "option_type": "binary"}
     with pytest.raises(ValidationError) as excinfo:
         validate_option_parameters(data)
     errors = excinfo.value.errors

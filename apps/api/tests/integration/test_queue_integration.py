@@ -1,4 +1,5 @@
 """Integration tests for RabbitMQ queue — Phase 1."""
+
 from __future__ import annotations
 
 import pytest
@@ -25,6 +26,7 @@ async def test_queue_publish_and_consume() -> None:
     # Actually, ScraperConsumer has an 'on_message' handler.
     # We can test the handler logic or the full loop.
 
-    def mock_callback(payload) -> None:
+    def mock_callback(payload: dict[str, object]) -> None:
         pass
+
     ScraperConsumer(callback=mock_callback)

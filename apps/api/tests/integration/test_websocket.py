@@ -1,9 +1,11 @@
 """Integration tests for websocket manager and channels — Phase 1."""
+
 from __future__ import annotations
 
 import asyncio
 import contextlib
 import json
+from typing import Any, cast
 
 import pytest
 
@@ -19,20 +21,28 @@ pytestmark = pytest.mark.integration
 @pytest.mark.asyncio
 async def test_manager_connection_lifecycle() -> None:
     """Test connecting and disconnecting a websocket."""
+
     class MockWebSocket:
         def __init__(self) -> None:
-            self.sent_messages = []
+            self.sent_messages: list[str] = []
             self.closed = False
 
-        async def accept(self) -> None: pass
-        async def send_text(self, data) -> None: self.sent_messages.append(data)
-        async def send_json(self, data) -> None: self.sent_messages.append(json.dumps(data))
-        async def close(self, code=1000, reason=None) -> None: self.closed = True
+        async def accept(self) -> None:
+            pass
+
+        async def send_text(self, data: str) -> None:
+            self.sent_messages.append(data)
+
+        async def send_json(self, data: Any) -> None:
+            self.sent_messages.append(json.dumps(data))
+
+        async def close(self, code: int = 1000, reason: str | None = None) -> None:
+            self.closed = True
 
     ws = MockWebSocket()
     # Accept
-    await manager.connect(ws, "metrics", user_id="user1")
-    assert ws in manager.active_connections["metrics"]
+    await manager.connect(cast("Any", ws), "metrics", user_id="user1")
+    assert cast("Any", ws) in manager.active_connections["metrics"]
 
     # Broadcast
     await manager.broadcast("metrics", {"msg": "hello"})
@@ -44,23 +54,29 @@ async def test_manager_connection_lifecycle() -> None:
     assert len(ws.sent_messages) == 2
 
     # Disconnect
-    manager.disconnect(ws, "metrics", user_id="user1")
-    assert ws not in manager.active_connections["metrics"]
+    manager.disconnect(cast("Any", ws), "metrics", user_id="user1")
+    assert cast("Any", ws) not in manager.active_connections["metrics"]
 
 
 @pytest.mark.asyncio
 async def test_pubsub_listener_integration() -> None:
     """Test that the Redis pubsub listener correctly broadcasts to websockets."""
+
     class MockWebSocket:
         def __init__(self) -> None:
-            self.sent_messages = []
+            self.sent_messages: list[str] = []
 
-        async def accept(self) -> None: pass
-        async def send_text(self, data) -> None: self.sent_messages.append(data)
-        async def send_json(self, data) -> None: self.sent_messages.append(json.dumps(data))
+        async def accept(self) -> None:
+            pass
+
+        async def send_text(self, data: str) -> None:
+            self.sent_messages.append(data)
+
+        async def send_json(self, data: Any) -> None:
+            self.sent_messages.append(json.dumps(data))
 
     ws = MockWebSocket()
-    await manager.connect(ws, "metrics")
+    await manager.connect(cast("Any", ws), "metrics")
 
     # Start listener in background
     listener_task = asyncio.create_task(start_redis_pubsub_listener(max_loops=10))
@@ -89,7 +105,7 @@ async def test_pubsub_listener_integration() -> None:
     listener_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await listener_task
-    manager.disconnect(ws, "metrics")
+    manager.disconnect(cast("Any", ws), "metrics")
 
 
 @pytest.mark.asyncio

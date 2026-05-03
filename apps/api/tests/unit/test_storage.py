@@ -1,4 +1,5 @@
 """Unit tests for storage service — Zero-Mock."""
+
 from __future__ import annotations
 
 import pytest

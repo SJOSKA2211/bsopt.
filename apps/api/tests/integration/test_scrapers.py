@@ -1,4 +1,5 @@
 """Integration tests for scrapers — Phase 1."""
+
 from __future__ import annotations
 
 import pytest

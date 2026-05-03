@@ -31,7 +31,7 @@ class MLflowTracker:
             with mlflow.start_run(run_name=run_name) as run:
                 mlflow.log_params(params)
                 mlflow.log_metrics(metrics)
-                if tags:
+                if tags is not None:
                     mlflow.set_tags(tags)
                 return str(run.info.run_id)
         except Exception as exc:
