@@ -11,14 +11,14 @@ from src.main import app
 
 
 @pytest.fixture
-async def client():
+async def client() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_health_endpoint(client: AsyncClient):
+async def test_health_endpoint(client: AsyncClient) -> None:
     response = await client.get("/health")
     assert response.status_code == 200
     data = response.json()
@@ -27,7 +27,7 @@ async def test_health_endpoint(client: AsyncClient):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_pricing_flow(client: AsyncClient):
+async def test_pricing_flow(client: AsyncClient) -> None:
     user_id = uuid4()
     await save_user(user_id, f"test_{uuid4().hex[:8]}@example.com", "Test User")
     headers = {"Authorization": f"Bearer {user_id}"}
@@ -48,7 +48,7 @@ async def test_pricing_flow(client: AsyncClient):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_experiments_listing(client: AsyncClient):
+async def test_experiments_listing(client: AsyncClient) -> None:
     user_id = uuid4()
     await save_user(user_id, f"test_{uuid4().hex[:8]}@example.com", "Test User")
     headers = {"Authorization": f"Bearer {user_id}"}
@@ -58,7 +58,7 @@ async def test_experiments_listing(client: AsyncClient):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_mlops_flow(client: AsyncClient):
+async def test_mlops_flow(client: AsyncClient) -> None:
     user_id = uuid4()
     await save_user(user_id, f"admin_{uuid4().hex[:8]}@example.com", "Admin User", role="admin")
     headers = {"Authorization": f"Bearer {user_id}"}

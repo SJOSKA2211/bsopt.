@@ -21,7 +21,7 @@ from src.analysis.statistics import (
 
 
 @pytest.mark.unit
-def test_export_to_csv():
+def test_export_to_csv() -> None:
     data = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
     csv_str = export_to_csv(data)
     assert "a,b" in csv_str
@@ -32,14 +32,14 @@ def test_export_to_csv():
 
 
 @pytest.mark.unit
-def test_export_to_json():
+def test_export_to_json() -> None:
     data = [{"a": 1, "b": 2}]
     json_str = export_to_json(data)
     assert '"a": 1' in json_str
 
 
 @pytest.mark.unit
-def test_compute_basic_stats():
+def test_compute_basic_stats() -> None:
     prices = [10.0, 11.0, 12.0]
     stats = compute_basic_stats(prices)
     assert stats["mean"] == pytest.approx(11.0)
@@ -52,20 +52,20 @@ def test_compute_basic_stats():
 
 
 @pytest.mark.unit
-def test_calculate_greeks():
+def test_calculate_greeks() -> None:
     greeks = calculate_greeks(100, 100, 1, 0.2, 0.05)
     assert "delta" in greeks
     assert "gamma" in greeks
 
 
 @pytest.mark.unit
-def test_calculate_implied_volatility():
+def test_calculate_implied_volatility() -> None:
     iv = calculate_implied_volatility(10, 100, 100, 1, 0.05)
     assert iv == pytest.approx(0.2)
 
 
 @pytest.mark.unit
-def test_calculate_error_metrics():
+def test_calculate_error_metrics() -> None:
     computed = [10.1, 20.2]
     benchmark = [10.0, 20.0]
     metrics = calculate_error_metrics(computed, benchmark)
@@ -74,7 +74,7 @@ def test_calculate_error_metrics():
 
 
 @pytest.mark.unit
-def test_estimate_convergence_order():
+def test_estimate_convergence_order() -> None:
     steps = [10, 20, 40, 80]
     # Assume Error = 1/N^2 -> log(Err) = -2 * log(N)
     errors = [1.0 / (s**2) for s in steps]
@@ -85,7 +85,7 @@ def test_estimate_convergence_order():
 
 
 @pytest.mark.unit
-def test_check_stability():
+def test_check_stability() -> None:
     prices = [10.4501, 10.4502, 10.4503]
     assert check_stability(prices, threshold=0.01) is True
 
@@ -96,14 +96,14 @@ def test_check_stability():
 
 
 @pytest.mark.unit
-def test_analyze_mc_convergence():
+def test_analyze_mc_convergence() -> None:
     res = analyze_mc_convergence(None, "standard_mc", [100, 200])
     assert len(res) == 2
     assert res[0]["paths"] == 100
 
 
 @pytest.mark.unit
-def test_calculate_convergence_order_wrapper():
+def test_calculate_convergence_order_wrapper() -> None:
     steps = np.array([10, 20, 40])
     errors = np.array([0.1, 0.025, 0.00625])  # 1/N^2 approx
     order = calculate_convergence_order(steps, errors)

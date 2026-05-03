@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+from collections.abc import AsyncIterator, Generator
+from typing import Any
 
 import pytest
 
@@ -30,7 +32,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create an instance of the default event loop for each test case."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
@@ -38,7 +40,7 @@ def event_loop():
 
 
 @pytest.fixture
-async def async_client():
+async def async_client() -> AsyncIterator[Any]:
     """Asynchronous FastAPI test client."""
     from httpx import ASGITransport, AsyncClient
 
@@ -48,7 +50,7 @@ async def async_client():
 
 
 @pytest.fixture
-def auth_headers(test_user):
+def auth_headers(test_user: dict[str, Any]) -> dict[str, str]:
     """Auth headers using the test_user's ID as a Bearer token."""
     return {
         "Authorization": f"Bearer {test_user['id']}"
@@ -56,7 +58,7 @@ def auth_headers(test_user):
 
 
 @pytest.fixture
-def client():
+def client() -> Generator[Any, None, None]:
     """FastAPI test client."""
     from fastapi.testclient import TestClient
 
@@ -79,7 +81,7 @@ async def infrastructure_setup() -> AsyncIterator[None]:
 
 
 @pytest.fixture
-async def db_cleanup():
+async def db_cleanup() -> AsyncIterator[None]:
     """Clean up database tables after tests."""
     from src.database.neon_client import acquire
     async with acquire() as conn:
@@ -89,7 +91,7 @@ async def db_cleanup():
 
 
 @pytest.fixture
-async def test_user():
+async def test_user() -> dict[str, Any]:
     """Create a test user in the database."""
     from uuid import uuid4
 

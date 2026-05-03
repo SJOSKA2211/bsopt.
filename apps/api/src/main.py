@@ -93,5 +93,5 @@ app.include_router(downloads.router, prefix="/api/v1")
 
 
 @app.get("/")
-async def root():
+async def root() -> None:
     return {"message": "Welcome to Bsopt API", "docs": "/docs"}

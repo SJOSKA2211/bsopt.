@@ -12,7 +12,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
-async def test_upload_and_presigned_url():
+async def test_upload_and_presigned_url() -> None:
     """Test uploading a file (with compression) and generating a presigned URL."""
     settings = get_settings()
     storage = StorageService()
@@ -29,7 +29,7 @@ async def test_upload_and_presigned_url():
 
 
 @pytest.mark.asyncio
-async def test_upload_with_compression():
+async def test_upload_with_compression() -> None:
     """Test that files above threshold are gzipped."""
     settings = get_settings()
     storage = StorageService()
@@ -50,7 +50,7 @@ async def test_upload_with_compression():
 
 
 @pytest.mark.asyncio
-async def test_upload_already_gzipped_extension():
+async def test_upload_already_gzipped_extension() -> None:
     """Test that .gz is not appended twice."""
     settings = get_settings()
     storage = StorageService()

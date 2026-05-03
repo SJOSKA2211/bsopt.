@@ -11,7 +11,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
-async def test_queue_publish_and_consume():
+async def test_queue_publish_and_consume() -> None:
     """Test publishing a task and consuming it with a real RabbitMQ."""
     get_settings()
 
@@ -25,6 +25,6 @@ async def test_queue_publish_and_consume():
     # Actually, ScraperConsumer has an 'on_message' handler.
     # We can test the handler logic or the full loop.
 
-    def mock_callback(payload):
+    def mock_callback(payload) -> None:
         pass
     ScraperConsumer(callback=mock_callback)

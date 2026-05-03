@@ -24,7 +24,7 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture
-def base_params():
+def base_params() -> None:
     return OptionParams(
         underlying_price=100.0,
         strike_price=100.0,
@@ -48,7 +48,7 @@ def test_option_params_validation() -> None:
         OptionParams(100, 100, 1, 0.2, 0.05, "invalid")
 
 
-def test_analytical_call(base_params):
+def test_analytical_call(base_params) -> None:
     pricer = BlackScholesAnalytical()
     res = pricer.price(base_params)
     assert pytest.approx(res.computed_price, 0.01) == 10.4505
@@ -66,7 +66,7 @@ def test_analytical_call(base_params):
     assert pytest.approx(iv, 0.001) == 0.2
 
 
-def test_analytical_put(base_params):
+def test_analytical_put(base_params) -> None:
     params = OptionParams(100, 100, 1, 0.2, 0.05, "put")
     pricer = BlackScholesAnalytical()
     res = pricer.price(params)
@@ -84,40 +84,40 @@ def test_analytical_put(base_params):
     assert pricer.implied_volatility(-1, params) == pytest.approx(0.0)
 
 
-def test_explicit_fdm_cfl_violation(base_params):
+def test_explicit_fdm_cfl_violation(base_params) -> None:
     pricer = ExplicitFDM()
     with pytest.raises(CFLViolationError):
         pricer.price(base_params, m_steps=200, n_steps=100)
 
 
-def test_explicit_fdm_put(base_params):
+def test_explicit_fdm_put(base_params) -> None:
     params = OptionParams(100, 100, 1, 0.2, 0.05, "put")
     pricer = ExplicitFDM()
     res = pricer.price(params, m_steps=50, n_steps=2000)
     assert pytest.approx(res.computed_price, 0.1) == 5.57
 
 
-def test_implicit_fdm_put(base_params):
+def test_implicit_fdm_put(base_params) -> None:
     params = OptionParams(100, 100, 1, 0.2, 0.05, "put")
     pricer = ImplicitFDM()
     res = pricer.price(params, m_steps=100, n_steps=1000)
     assert pytest.approx(res.computed_price, 0.1) == 5.57
 
 
-def test_crank_nicolson_put(base_params):
+def test_crank_nicolson_put(base_params) -> None:
     params = OptionParams(100, 100, 1, 0.2, 0.05, "put")
     pricer = CrankNicolsonFDM()
     res = pricer.price(params, m_steps=100, n_steps=1000)
     assert pytest.approx(res.computed_price, 0.01) == 5.57
 
 
-def test_standard_mc_confidence(base_params):
+def test_standard_mc_confidence(base_params) -> None:
     pricer = StandardMonteCarlo()
     ci = pricer.price_with_confidence_interval(base_params, num_paths=1000)
     assert ci["ci_lower"] < ci["price"] < ci["ci_upper"]
 
 
-def test_antithetic_mc_odd_paths(base_params):
+def test_antithetic_mc_odd_paths(base_params) -> None:
     pricer = AntitheticMonteCarlo()
     # Test odd number of paths to cover line 20
     res = pricer.price(base_params, num_paths=10001)
@@ -125,14 +125,14 @@ def test_antithetic_mc_odd_paths(base_params):
     assert pytest.approx(res.computed_price, 0.5) == 10.45
 
 
-def test_antithetic_mc_put(base_params):
+def test_antithetic_mc_put(base_params) -> None:
     params = OptionParams(100, 100, 1, 0.2, 0.05, "put")
     pricer = AntitheticMonteCarlo()
     res = pricer.price(params, num_paths=10000)
     assert pytest.approx(res.computed_price, 0.2) == 5.57
 
 
-def test_binomial_crr_american(base_params):
+def test_binomial_crr_american(base_params) -> None:
     pricer = BinomialCRR()
     # European call
     params_euro = OptionParams(
@@ -168,21 +168,21 @@ def test_binomial_crr_american(base_params):
     assert res_amer_put.computed_price > res_euro_put.computed_price
 
 
-def test_implicit_fdm_american_put(base_params):
+def test_implicit_fdm_american_put(base_params) -> None:
     params_amer = OptionParams(100, 100, 1, 0.2, 0.05, "put", exercise_type="american")
     pricer = ImplicitFDM()
     res = pricer.price(params_amer, m_steps=100, n_steps=1000)
     assert pytest.approx(res.computed_price, 0.1) == 6.09
 
 
-def test_crank_nicolson_american_put(base_params):
+def test_crank_nicolson_american_put(base_params) -> None:
     params_amer = OptionParams(100, 100, 1, 0.2, 0.05, "put", exercise_type="american")
     pricer = CrankNicolsonFDM()
     res = pricer.price(params_amer, m_steps=100, n_steps=1000)
     assert pytest.approx(res.computed_price, 0.1) == 6.09
 
 
-def test_trinomial_american_put(base_params):
+def test_trinomial_american_put(base_params) -> None:
     params_euro = OptionParams(100, 100, 1, 0.2, 0.05, "put", exercise_type="european")
     params_amer = OptionParams(100, 100, 1, 0.2, 0.05, "put", exercise_type="american")
     pricer = TrinomialTree()
@@ -198,7 +198,7 @@ def test_trinomial_american_put(base_params):
     QuasiMonteCarlo, BinomialCRR, TrinomialTree,
     RichardsonExtrapolation, TrinomialRichardsonExtrapolation
 ])
-def test_all_methods_agreement(pricer_class, base_params):
+def test_all_methods_agreement(pricer_class, base_params) -> None:
     pricer = pricer_class()
     if isinstance(pricer, ExplicitFDM):
         res = pricer.price(base_params, m_steps=50, n_steps=2000)
@@ -219,21 +219,21 @@ def test_all_methods_agreement(pricer_class, base_params):
     assert pytest.approx(res.computed_price, abs=tol) == bs_price
 
 
-def test_analytical_geometric_asian(base_params):
+def test_analytical_geometric_asian(base_params) -> None:
     pricer = BlackScholesAnalytical()
     price = pricer.geometric_asian_price(base_params)
     # For a fixed underlying and volatility, GA price < BS price
     assert 0 < price < 10.45
 
 
-def test_control_variate_mc_convergence(base_params):
+def test_control_variate_mc_convergence(base_params) -> None:
     pricer = ControlVariateMonteCarlo()
     # High steps to reduce discrete bias vs continuous anchor
     res = pricer.price(base_params, num_paths=20000, num_steps=200)
     assert pytest.approx(res.computed_price, abs=0.3) == 10.45
 
 
-def test_explicit_fdm_american_put(base_params):
+def test_explicit_fdm_american_put(base_params) -> None:
     params_amer = OptionParams(100, 100, 1, 0.2, 0.05, "put", exercise_type="american")
     pricer = ExplicitFDM()
     # Need enough steps for stability
@@ -242,7 +242,7 @@ def test_explicit_fdm_american_put(base_params):
     assert pytest.approx(res.computed_price, 0.1) == 6.09
 
 
-def test_analytical_geometric_asian_put(base_params):
+def test_analytical_geometric_asian_put(base_params) -> None:
     params = OptionParams(100, 100, 1, 0.2, 0.05, "put")
     pricer = BlackScholesAnalytical()
     price = pricer.geometric_asian_price(params)
@@ -254,7 +254,7 @@ def test_option_params_invalid_exercise() -> None:
         OptionParams(100, 100, 1, 0.2, 0.05, "call", exercise_type="invalid")
 
 
-def test_quasi_mc_sobol_paths(base_params):
+def test_quasi_mc_sobol_paths(base_params) -> None:
     pricer = QuasiMonteCarlo()
     # Should enforce power of 2
     res = pricer.price(base_params, num_paths=500)

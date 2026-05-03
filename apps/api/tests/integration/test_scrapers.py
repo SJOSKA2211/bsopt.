@@ -10,7 +10,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
-async def test_scraper_factory():
+async def test_scraper_factory() -> None:
     """Test that the scraper factory returns the correct classes."""
     spy = get_scraper("spy")
     assert isinstance(spy, SpyScraper)
@@ -20,7 +20,7 @@ async def test_scraper_factory():
 
 
 @pytest.mark.asyncio
-async def test_spy_scraper_logic():
+async def test_spy_scraper_logic() -> None:
     """Test the SPY scraper's core logic."""
     scraper = SpyScraper()
     assert scraper.market == "spy"

@@ -233,9 +233,9 @@ async def test_channels_binary_routing() -> None:
         def __init__(self) -> None:
             self.count = 0
 
-        async def subscribe(self, *args, **kwargs): pass
+        async def subscribe(self, *args, **kwargs) -> None: pass
 
-        async def get_message(self, *args, **kwargs):
+        async def get_message(self, *args, **kwargs) -> None:
             self.count += 1
             if self.count == 1:
                 return {
@@ -250,14 +250,14 @@ async def test_channels_binary_routing() -> None:
                 }
             return None
 
-        async def unsubscribe(self): pass
+        async def unsubscribe(self) -> None: pass
 
-        async def aclose(self):
+        async def aclose(self) -> None:
             # Test line 84: fail on aclose
             raise Exception("aclose failed")
 
     class MockRedis:
-        def pubsub(self): return MockPubSub()
+        def pubsub(self) -> None: return MockPubSub()
 
     # We need to monkeypatch get_redis in the module temporarily
     orig_get_redis = channels_mod.get_redis

@@ -17,17 +17,17 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
-async def test_manager_connection_lifecycle():
+async def test_manager_connection_lifecycle() -> None:
     """Test connecting and disconnecting a websocket."""
     class MockWebSocket:
-        def __init__(self):
+        def __init__(self) -> None:
             self.sent_messages = []
             self.closed = False
 
-        async def accept(self): pass
-        async def send_text(self, data): self.sent_messages.append(data)
-        async def send_json(self, data): self.sent_messages.append(json.dumps(data))
-        async def close(self, code=1000, reason=None): self.closed = True
+        async def accept(self) -> None: pass
+        async def send_text(self, data) -> None: self.sent_messages.append(data)
+        async def send_json(self, data) -> None: self.sent_messages.append(json.dumps(data))
+        async def close(self, code=1000, reason=None) -> None: self.closed = True
 
     ws = MockWebSocket()
     # Accept
@@ -49,15 +49,15 @@ async def test_manager_connection_lifecycle():
 
 
 @pytest.mark.asyncio
-async def test_pubsub_listener_integration():
+async def test_pubsub_listener_integration() -> None:
     """Test that the Redis pubsub listener correctly broadcasts to websockets."""
     class MockWebSocket:
-        def __init__(self):
+        def __init__(self) -> None:
             self.sent_messages = []
 
-        async def accept(self): pass
-        async def send_text(self, data): self.sent_messages.append(data)
-        async def send_json(self, data): self.sent_messages.append(json.dumps(data))
+        async def accept(self) -> None: pass
+        async def send_text(self, data) -> None: self.sent_messages.append(data)
+        async def send_json(self, data) -> None: self.sent_messages.append(json.dumps(data))
 
     ws = MockWebSocket()
     await manager.connect(ws, "metrics")
@@ -93,7 +93,7 @@ async def test_pubsub_listener_integration():
 
 
 @pytest.mark.asyncio
-async def test_helper_broadcasts():
+async def test_helper_broadcasts() -> None:
     """Test the helper functions in channels.py."""
     # These just call manager.broadcast, so we test they use the right channels.
     # Note: we don't need a real WS here if we just check the internal state

@@ -12,7 +12,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
-async def test_user_lifecycle(db_cleanup):
+async def test_user_lifecycle(db_cleanup) -> None:
     """Test user creation and retrieval."""
     user_id = uuid4()
     email = f"test_{user_id}@example.com"
@@ -34,7 +34,7 @@ async def test_user_lifecycle(db_cleanup):
 
 
 @pytest.mark.asyncio
-async def test_option_parameters_upsert(db_cleanup):
+async def test_option_parameters_upsert(db_cleanup) -> None:
     """Test idempotency and retrieval of option parameters."""
     opt_id = await repository.save_option_parameters(
         underlying_price=100.0,
@@ -61,7 +61,7 @@ async def test_option_parameters_upsert(db_cleanup):
 
 
 @pytest.mark.asyncio
-async def test_market_data_upsert(db_cleanup):
+async def test_market_data_upsert(db_cleanup) -> None:
     """Test upserting market data."""
     opt_id = await repository.save_option_parameters(100, 100, 1, 0.2, 0.05, "call", "test")
 
@@ -81,7 +81,7 @@ async def test_market_data_upsert(db_cleanup):
 
 
 @pytest.mark.asyncio
-async def test_audit_log(db_cleanup):
+async def test_audit_log(db_cleanup) -> None:
     """Test saving audit logs."""
     run_id = uuid4()
     await repository.save_audit_log(run_id, "test_step", "success", 10, "test message")

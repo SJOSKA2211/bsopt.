@@ -17,7 +17,7 @@ from src.notifications.hierarchy import NotificationRouter
 
 
 @pytest.fixture
-def mlflow_uri():
+def mlflow_uri() -> None:
     return os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
 
 
@@ -107,9 +107,9 @@ def test_ray_runner_connection_failure_path() -> None:
             ray.shutdown()
 
         runner = RayExperimentRunner(
-            ray_address="local",
+            ray_address="invalid://address:9999",
             mlflow_tracking_uri="",
-            num_cpus=-1
+            num_cpus=1
         )
 
         RayExperimentRunner._connection_failed = False

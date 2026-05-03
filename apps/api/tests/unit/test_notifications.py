@@ -24,18 +24,18 @@ settings = get_settings()
 
 
 @asynccontextmanager
-async def run_fake_server(port: int):
+async def run_fake_server(port: int) -> None:
     app = FastAPI()
 
     @app.post("/emails")
-    async def fake_email(request: Request):
+    async def fake_email(request: Request) -> None:
         auth = request.headers.get("Authorization", "")
         if "invalid" in auth:
             return JSONResponse(content={"error": "unauthorized"}, status_code=401)
         return JSONResponse(content={"id": "fake_email_id"}, status_code=201)
 
     @app.post("/push")
-    async def fake_push(request: Request):
+    async def fake_push(request: Request) -> None:
         return JSONResponse(content={"status": "ok"}, status_code=201)
 
     config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
@@ -51,7 +51,7 @@ async def run_fake_server(port: int):
 
 
 class StubManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.messages = []
 
     async def send_personal_message(self, message: dict[str, Any], user_id: str) -> None:
