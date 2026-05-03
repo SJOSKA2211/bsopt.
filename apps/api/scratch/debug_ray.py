@@ -1,5 +1,6 @@
-import ray
 import os
+
+import ray
 
 tmp_dir = "/home/kamau/bsopt./apps/api/tmp/ray"
 os.makedirs(tmp_dir, exist_ok=True)
@@ -9,15 +10,15 @@ try:
     ray.init(num_cpus=1, include_dashboard=False, _temp_dir=tmp_dir)
     print("Ray started!")
     print(ray.cluster_resources())
-    
+
     @ray.remote
     def f(x):
         return x * x
-    
+
     print("Running task...")
     res = ray.get(f.remote(10))
     print(f"Result: {res}")
-    
+
 finally:
     ray.shutdown()
     print("Ray shutdown.")

@@ -11,7 +11,11 @@ import redis.asyncio as redis
 import structlog
 
 from src.config import get_settings
-from src.metrics import REDIS_OPERATIONS_TOTAL
+from src.metrics import (
+    REDIS_CACHE_HITS,
+    REDIS_CACHE_MISSES,
+    REDIS_OPERATIONS_TOTAL,
+)
 
 logger = structlog.get_logger(__name__)
 _redis: redis.Redis | None = None
@@ -74,10 +78,15 @@ async def get_cache(key: str, endpoint: str = "unknown") -> Any | None:
     # Check for compressed key first
     data = await r.get(f"gz:{key}")
     if data:
+        REDIS_CACHE_HITS.labels(endpoint=endpoint).inc()
         if isinstance(data, bytes):
             data = gzip.decompress(data).decode()
         return json.loads(data)
 
     data = await r.get(key)
-    REDIS_OPERATIONS_TOTAL.labels(operation="get").inc()
-    return json.loads(data) if data else None
+    if data:
+        REDIS_CACHE_HITS.labels(endpoint=endpoint).inc()
+        return json.loads(data)
+
+    REDIS_CACHE_MISSES.labels(endpoint=endpoint).inc()
+    return None

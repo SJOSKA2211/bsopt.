@@ -154,8 +154,9 @@ def test_ray_runner_local_init_and_grid() -> None:
         assert results[0]["computed_price"] > 0
 
         # Direct call for coverage of line 75 (Ray worker delegation)
-        from src.mlops.ray_runner import price_remote
-        direct_res = price_remote._function(params, "analytical")
+        from src.mlops.ray_runner import _price_logic
+
+        direct_res = _price_logic(params, "analytical")
         assert direct_res["computed_price"] > 0
     finally:
         if ray.is_initialized():

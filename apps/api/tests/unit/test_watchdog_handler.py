@@ -80,3 +80,17 @@ def test_start_watchdog(tmp_path: Path) -> None:
     assert observer.is_alive()
     observer.stop()
     observer.join()
+
+
+@pytest.mark.unit
+def test_detect_market_empty_filename() -> None:
+    assert _detect_market("") == "unknown"
+
+
+@pytest.mark.unit
+def test_supported_extensions_content() -> None:
+    from src.data.watchdog_handler import SUPPORTED_EXTENSIONS
+
+    assert ".csv" in SUPPORTED_EXTENSIONS
+    assert ".json" in SUPPORTED_EXTENSIONS
+    assert ".gz" in SUPPORTED_EXTENSIONS

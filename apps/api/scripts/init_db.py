@@ -14,7 +14,9 @@ logger = structlog.get_logger(__name__)
 
 async def init_db() -> None:
     """Read the initial schema SQL and execute it against NeonDB."""
-    schema_path = Path(__file__).parent.parent.parent.parent / "migrations" / "001_initial_schema.sql"
+    schema_path = (
+        Path(__file__).parent.parent.parent.parent / "migrations" / "001_initial_schema.sql"
+    )
 
     if not schema_path.exists():
         logger.error("schema_file_missing", path=str(schema_path))

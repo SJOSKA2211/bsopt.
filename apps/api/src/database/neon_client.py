@@ -74,7 +74,15 @@ async def acquire() -> AsyncIterator[asyncpg.Connection]:
             yield conn
     except Exception as exc:
         NEON_ERRORS_TOTAL.labels(operation="acquire").inc()
-        logger.error("neondb_acquire_failed", error=str(exc))
+        logger.error(
+            "neondb_acquire_failed",
+            event="error",
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+            component="neon_client",
+            severity="error",
+            context={},
+        )
         raise
     finally:
         NEON_QUERY_DURATION.labels(operation="acquire").observe(time.perf_counter() - start)

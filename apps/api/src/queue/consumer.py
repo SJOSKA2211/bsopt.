@@ -43,4 +43,4 @@ class ScraperConsumer:
         self.callback = callback
 
     async def start(self) -> None:
-        await start_consumer("scraper_tasks", self.callback)
+        await start_consumer("bs.scrapers", self.callback)

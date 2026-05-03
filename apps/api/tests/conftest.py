@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import AsyncIterator, Generator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Generator
 
 # Override environment variables for local testing against Docker containers
 # These should match the values in docker-compose.yml
@@ -29,7 +31,7 @@ from src.queue.rabbitmq_client import close_rabbitmq
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+def event_loop() -> Generator[asyncio.AbstractEventLoop]:
     """Create an instance of the default event loop for each test case."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
@@ -54,7 +56,7 @@ def auth_headers(test_user: dict[str, Any]) -> dict[str, str]:
 
 
 @pytest.fixture
-def client() -> Generator[Any, None, None]:
+def client() -> Generator[Any]:
     """FastAPI test client."""
     from fastapi.testclient import TestClient
 

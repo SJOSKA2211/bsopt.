@@ -26,22 +26,28 @@ async def run_experiments() -> None:
 
     # Example parameter grid matching OptionParams schema
     param_grid: list[tuple[dict[str, Any], str]] = [
-        ({
-            "underlying_price": 100.0,
-            "strike_price": 100.0,
-            "time_to_maturity": 1.0,
-            "volatility": 0.2,
-            "risk_free_rate": 0.05,
-            "option_type": "call"
-        }, "analytical"),
-        ({
-            "underlying_price": 100.0,
-            "strike_price": 100.0,
-            "time_to_maturity": 1.0,
-            "volatility": 0.2,
-            "risk_free_rate": 0.05,
-            "option_type": "binomial_crr"
-        }, "binomial_crr"),
+        (
+            {
+                "underlying_price": 100.0,
+                "strike_price": 100.0,
+                "time_to_maturity": 1.0,
+                "volatility": 0.2,
+                "risk_free_rate": 0.05,
+                "option_type": "call",
+            },
+            "analytical",
+        ),
+        (
+            {
+                "underlying_price": 100.0,
+                "strike_price": 100.0,
+                "time_to_maturity": 1.0,
+                "volatility": 0.2,
+                "risk_free_rate": 0.05,
+                "option_type": "binomial_crr",
+            },
+            "binomial_crr",
+        ),
     ]
 
     results = runner.run_grid("grid_test", param_grid)

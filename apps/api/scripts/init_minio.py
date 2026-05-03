@@ -1,4 +1,5 @@
 """Initialize MinIO buckets for bsopt."""
+
 from __future__ import annotations
 
 import asyncio
@@ -16,7 +17,7 @@ async def init_minio() -> None:
     buckets = [
         settings.minio_bucket_exports,
         settings.minio_bucket_models,
-        settings.minio_bucket_scraper
+        settings.minio_bucket_scraper,
     ]
 
     async with get_minio() as client:

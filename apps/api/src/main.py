@@ -34,8 +34,12 @@ logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Manage application startup and shutdown events."""
+    from src.config import get_settings
+    from src.data.watchdog_handler import start_watchdog
+
+    settings = get_settings()
     logger.info("app_starting")
 
     # Initialize infrastructure
@@ -45,10 +49,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Start background tasks
     pubsub_task = asyncio.create_task(start_redis_pubsub_listener())
+    watchdog_observer = start_watchdog(settings.watchdog_watch_dir)
 
     yield
 
     # Shutdown infrastructure
+    watchdog_observer.stop()
+    watchdog_observer.join()
+
     pubsub_task.cancel()
     with suppress(asyncio.CancelledError):
         await pubsub_task

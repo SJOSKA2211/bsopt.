@@ -106,7 +106,7 @@ class BlackScholesAnalytical(BasePricer):
 
         try:
             return float(brentq(objective, 1e-6, 5.0))
-        except (ValueError, RuntimeError):
+        except ValueError, RuntimeError:
             return 0.0
 
     @staticmethod

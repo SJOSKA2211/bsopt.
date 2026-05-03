@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from itertools import starmap
 from typing import Any
 
 import mlflow
@@ -9,7 +10,6 @@ import ray
 import structlog
 
 from src.metrics import RAY_CLUSTER_CPUS, RAY_TASKS_COMPLETED, RAY_TASKS_SUBMITTED
-from itertools import starmap
 
 logger = structlog.get_logger(__name__)
 
@@ -107,9 +107,7 @@ class RayExperimentRunner:
                         **self.ray_kwargs,
                     )
             except Exception as exc:
-                logger.warning(
-                    "ray_remote_connect_failed", error=str(exc), fallback="local"
-                )
+                logger.warning("ray_remote_connect_failed", error=str(exc), fallback="local")
                 RayExperimentRunner._connection_failed = True
                 ray.init(ignore_reinit_error=True, runtime_env={}, **self.ray_kwargs)
 

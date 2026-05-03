@@ -32,7 +32,7 @@ def validate_option_parameters(data: dict[str, Any]) -> None:
                     errors.append(f"{field} must be greater than zero")
                 elif field == "risk_free_rate" and f_val < 0:
                     errors.append(f"{field} must be non-negative")
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 errors.append(f"{field} must be a number")
         elif field == "option_type" and val not in {"call", "put"}:
             errors.append("option_type must be 'call' or 'put'")
@@ -57,7 +57,7 @@ def validate_market_data(data: dict[str, Any]) -> None:
                 f_val = float(data[field])
                 if f_val < 0:
                     errors.append(f"{field.capitalize()} cannot be negative")
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 errors.append(f"{field} must be a number")
 
     if (
@@ -75,7 +75,7 @@ def validate_market_data(data: dict[str, Any]) -> None:
         try:
             if int(data["volume"]) < 0:
                 errors.append("Volume cannot be negative")
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             errors.append("Volume must be an integer")
 
     if errors:

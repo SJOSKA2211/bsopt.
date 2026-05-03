@@ -6,9 +6,8 @@ import asyncio
 import base64
 import json
 import os
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import pytest
@@ -21,6 +20,9 @@ from src.database.repository import save_user_push_subscription
 from src.notifications.email import send_email_notification, send_transactional_email
 from src.notifications.hierarchy import Notification, NotificationRouter
 from src.notifications.push import send_push_notification, send_web_push
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 settings = get_settings()
 
