@@ -131,6 +131,7 @@ def test_ray_runner_local_init_and_grid() -> None:
             ray_address="",
             mlflow_tracking_uri="http://127.0.0.1:5000",
             num_cpus=1,
+            include_dashboard=False,
         )
         # First connect: exercises the `not self.ray_address` → ray.init() branch
         runner.connect()
@@ -151,6 +152,11 @@ def test_ray_runner_local_init_and_grid() -> None:
         results = runner.run_grid("test_ray_grid", [(params, "analytical")])
         assert len(results) == 1
         assert results[0]["computed_price"] > 0
+
+        # Direct call for coverage of line 75 (Ray worker delegation)
+        from src.mlops.ray_runner import price_remote
+        direct_res = price_remote._function(params, "analytical")
+        assert direct_res["computed_price"] > 0
     finally:
         if ray.is_initialized():
             ray.shutdown()
@@ -168,6 +174,7 @@ def test_ray_runner_connection_failed_branch() -> None:
             ray_address="",
             mlflow_tracking_uri="http://127.0.0.1:5000",
             num_cpus=1,
+            include_dashboard=False,
         )
         runner.connect()
         assert ray.is_initialized()
@@ -189,6 +196,7 @@ def test_ray_runner_exception_fallback() -> None:
             ray_address="invalid://address:9999",
             mlflow_tracking_uri="",
             num_cpus=1,
+            include_dashboard=False,
         )
         runner.connect()
         # After exception, _connection_failed should be True and Ray should be local
@@ -213,6 +221,7 @@ def test_ray_runner_with_address() -> None:
             ray_address="local",
             mlflow_tracking_uri="http://127.0.0.1:5000",
             num_cpus=1,
+            include_dashboard=False,
         )
         runner.connect()
         assert ray.is_initialized()

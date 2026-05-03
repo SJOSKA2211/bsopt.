@@ -97,14 +97,21 @@ class RayExperimentRunner:
                     ray.init(
                         address=self.ray_address,
                         ignore_reinit_error=True,
+                        runtime_env={},
                         **self.ray_kwargs,
                     )
                 else:
-                    ray.init(ignore_reinit_error=True, **self.ray_kwargs)
+                    ray.init(
+                        ignore_reinit_error=True,
+                        runtime_env={},
+                        **self.ray_kwargs,
+                    )
             except Exception as exc:
-                logger.warning("ray_remote_connect_failed", error=str(exc), fallback="local")
+                logger.warning(
+                    "ray_remote_connect_failed", error=str(exc), fallback="local"
+                )
                 RayExperimentRunner._connection_failed = True
-                ray.init(ignore_reinit_error=True, **self.ray_kwargs)
+                ray.init(ignore_reinit_error=True, runtime_env={}, **self.ray_kwargs)
 
         self._report_cluster_status()
 
@@ -128,8 +135,12 @@ class RayExperimentRunner:
         with mlflow.start_run(run_name=f"grid_{experiment_name}") as run:
             mlflow.log_param("grid_size", len(param_grid))
             RAY_TASKS_SUBMITTED.labels(task_type="pricing").inc(len(param_grid))
-            futures = list(starmap(price_remote.remote, param_grid))
-            results: list[dict[str, Any]] = ray.get(futures)
+            if ray.is_initialized():
+                futures = list(starmap(price_remote.remote, param_grid))
+                results: list[dict[str, Any]] = ray.get(futures)
+            else:
+                logger.warning("ray_not_initialized_using_direct_fallback")
+                results = list(starmap(_price_logic, param_grid))
             RAY_TASKS_COMPLETED.labels(task_type="pricing", status="success").inc(len(results))
             mlflow.log_metric("total_computations", len(results))
         logger.info(
