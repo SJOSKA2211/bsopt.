@@ -88,7 +88,7 @@ async def db_cleanup() -> AsyncIterator[None]:
     async with acquire() as conn:
         # Note: truncate tables as needed
         await conn.execute(
-            "TRUNCATE TABLE validation_metrics, ml_experiments, scrape_runs, notifications, feature_snapshots CASCADE"
+            "TRUNCATE TABLE users, option_parameters, method_results, market_data, validation_metrics, scrape_runs, audit_log, scrape_errors, notifications, ml_experiments, feature_snapshots CASCADE"
         )
     yield
 

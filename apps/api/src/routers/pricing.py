@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Annotated, cast, Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -33,8 +33,8 @@ class PricingRequest(BaseModel):
 
 @router.post("/")
 async def calculate_price(
-    request: PricingRequest, user_id: str = Depends(get_current_user_id)
-) -> dict[str, Any]:
+    request: PricingRequest, user_id: Annotated[str, Depends(get_current_user_id)]
+) -> dict[str, object]:
     """Calculate option price using the specified method."""
     settings = get_settings()
     runner = RayExperimentRunner(
@@ -70,10 +70,10 @@ async def calculate_price(
         await save_method_result(
             option_id=opt_id,
             method_type=method,
-            computed_price=result["computed_price"],
-            parameter_set=result["parameter_set"],
-            exec_seconds=result["exec_seconds"],
-            converged=result["converged"],
+            computed_price=cast(float, result["computed_price"]),
+            parameter_set=cast(dict[str, object], result["parameter_set"]),
+            exec_seconds=cast(float, result["exec_seconds"]),
+            converged=cast(bool, result["converged"]),
         )
 
         return {
@@ -84,4 +84,4 @@ async def calculate_price(
         }
     except Exception as exc:
         logger.error("pricing_calculation_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

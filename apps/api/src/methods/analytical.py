@@ -119,8 +119,6 @@ class BlackScholesAnalytical(BasePricer):
         risk_free_rate = params.risk_free_rate
 
         # Correct Kemna & Vorst (1990) parameters for continuous geometric average
-        # m = E[ln(G)] = ln(S) + 0.5 * (r - 0.5 * sigma^2) * T
-        # v^2 = Var(ln(G)) = sigma^2 * T / 3
         mu_adj = 0.5 * (risk_free_rate - 0.5 * volatility**2)
         var_total = (volatility**2 * time_to_expiry) / 3.0
 

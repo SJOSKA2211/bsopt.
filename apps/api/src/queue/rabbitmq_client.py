@@ -10,35 +10,49 @@ import structlog
 from src.config import get_settings
 
 logger = structlog.get_logger(__name__)
-_connection: aio_pika.abc.AbstractConnection | None = None
-_loop: asyncio.AbstractEventLoop | None = None
+
+
+class RabbitManager:
+    """Manages global RabbitMQ connection with loop-awareness."""
+
+    _connection: aio_pika.abc.AbstractConnection | None = None
+    _loop: asyncio.AbstractEventLoop | None = None
+
+    @classmethod
+    async def get_instance(cls) -> aio_pika.abc.AbstractConnection:
+        """Return global RabbitMQ connection; create on first call or loop change."""
+        current_loop = asyncio.get_running_loop()
+
+        if cls._connection is None or cls._loop != current_loop or cls._connection.is_closed:
+            cls._connection = None
+            settings = get_settings()
+            cls._connection = await aio_pika.connect_robust(settings.rabbitmq_url)
+            cls._loop = current_loop
+            logger.info("rabbitmq_connected", step="init")
+
+        return cls._connection
+
+    @classmethod
+    async def close(cls) -> None:
+        """Shutdown RabbitMQ connection."""
+        if cls._connection is not None:
+            try:
+                current_loop = asyncio.get_running_loop()
+                if cls._loop == current_loop:
+                    await cls._connection.close()
+            except (RuntimeError, Exception):
+                pass
+            finally:
+                cls._connection = None
+                cls._loop = None
+                logger.info("rabbitmq_closed", step="shutdown")
 
 
 async def get_rabbitmq() -> aio_pika.abc.AbstractConnection:
-    """Return global RabbitMQ connection; create on first call or loop change."""
-    global _connection, _loop
-    current_loop = asyncio.get_running_loop()
-
-    if _connection is None or _loop != current_loop or _connection.is_closed:
-        _connection = None
-        settings = get_settings()
-        _connection = await aio_pika.connect_robust(settings.rabbitmq_url)
-        _loop = current_loop
-        logger.info("rabbitmq_connected", step="init")
-
-    return _connection
+    """Shortcut for RabbitManager.get_instance()."""
+    return await RabbitManager.get_instance()
 
 
 async def close_rabbitmq() -> None:
-    """Shutdown RabbitMQ connection."""
-    global _connection, _loop
-    if _connection is not None:
-        try:
-            current_loop = asyncio.get_running_loop()
-            if _loop == current_loop:
-                await _connection.close()
-        except RuntimeError:
-            pass
-        _connection = None
-        _loop = None
-        logger.info("rabbitmq_closed", step="shutdown")
+    """Shortcut for RabbitManager.close()."""
+    await RabbitManager.close()

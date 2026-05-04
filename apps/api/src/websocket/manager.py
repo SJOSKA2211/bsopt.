@@ -81,8 +81,9 @@ class ConnectionManager:
 
         # Cleanup dead connections
         for dead in dead_connections:
-            # Note: without user_id tracking in broadcast, we might miss disconnecting from user_connections
-            # but usually they'll be cleaned up on next specific message or disconnect call.
+            # Note: without user_id tracking in broadcast, we might miss
+            # disconnecting from user_connections but usually they'll be cleaned
+            # up on next specific message or disconnect call.
             self.disconnect(dead, channel)
 
     async def send_personal_message(self, message: dict[str, Any], user_id: str) -> None:

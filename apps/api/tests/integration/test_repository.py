@@ -65,7 +65,9 @@ async def test_option_parameters_upsert(db_cleanup: Any) -> None:
 @pytest.mark.asyncio
 async def test_market_data_upsert(db_cleanup: Any) -> None:
     """Test upserting market data."""
-    opt_id = await repository.save_option_parameters(100, 100, 1, 0.2, 0.05, "call", "test")
+    opt_id = await repository.save_option_parameters(
+        100.0, 100.0, 1.0, 0.2, 0.05, option_type="call", market_source="test"
+    )
 
     await repository.save_market_data(
         option_id=opt_id,

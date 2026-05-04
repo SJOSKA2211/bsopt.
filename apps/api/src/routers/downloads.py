@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -14,7 +16,7 @@ router = APIRouter(prefix="/downloads", tags=["Downloads"])
 
 @router.get("/generate-url")
 async def get_download_url(
-    bucket: str, object_name: str, user_id: str = Depends(get_current_user_id)
+    bucket: str, object_name: str, user_id: Annotated[str, Depends(get_current_user_id)]
 ) -> dict[str, str]:
     """Generate a presigned URL for downloading an artifact."""
     try:
@@ -24,4 +26,4 @@ async def get_download_url(
         logger.error(
             "presigned_url_generation_failed", bucket=bucket, key=object_name, error=str(exc)
         )
-        raise HTTPException(status_code=500, detail="Could not generate download URL")
+        raise HTTPException(status_code=500, detail="Could not generate download URL") from exc

@@ -1,1 +1,21 @@
+# Environment
 .env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Coverage
+.coverage
+htmlcov/
+coverage_*.txt
+
+# Test artifacts
+*_results.txt
+mypy_errors*.txt
+ruff_errors*.txt
+
+# Temp
+tmp/

@@ -2,23 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, AsyncContextManager
 
 import aioboto3
 import structlog
 
 from src.config import get_settings
 
+if TYPE_CHECKING:
+    from aiobotocore.client import AioBaseClient
+
 logger = structlog.get_logger(__name__)
 _session = aioboto3.Session()
 
 
-def get_minio() -> Any:
+def get_minio() -> AsyncContextManager[AioBaseClient]:
     """Return an async context manager for MinIO client."""
     settings = get_settings()
-    return _session.client(
+    from typing import cast
+    return cast(AsyncContextManager["AioBaseClient"], _session.client(
         "s3",
         endpoint_url=f"http://{settings.minio_endpoint}",
         aws_access_key_id=settings.minio_access_key,
         aws_secret_access_key=settings.minio_secret_key,
-    )
+    ))

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
 import ray
 from fastapi import APIRouter, Body, Depends, Query
@@ -25,7 +25,9 @@ class ModelRegistrationRequest(BaseModel):
 
 
 @router.get("/status")
-async def get_mlops_status(user_id: str = Depends(get_current_user_id)) -> dict[str, Any]:
+async def get_mlops_status(
+    user_id: Annotated[str, Depends(get_current_user_id)],
+) -> dict[str, object]:
     """Get status of MLOps infrastructure."""
     return {
         "ray": "connected" if ray.is_initialized() else "disconnected",
@@ -35,8 +37,9 @@ async def get_mlops_status(user_id: str = Depends(get_current_user_id)) -> dict[
 
 @router.post("/register")
 async def register_model(
-    request: ModelRegistrationRequest, admin_user: dict[str, Any] = Depends(get_admin_user)
-) -> dict[str, Any]:
+    request: ModelRegistrationRequest,
+    admin_user: Annotated[dict[str, object], Depends(get_admin_user)]
+) -> dict[str, object]:
     """Register a new model version."""
     settings = get_settings()
     registry = ModelRegistry(settings.mlflow_tracking_uri)
@@ -48,11 +51,11 @@ async def register_model(
 
 @router.post("/drift/check")
 async def trigger_drift_check(
-    method_type: str = Query(...),
-    baseline_mape: float = Query(...),
-    user_ids: list[str] = Body(...),
-    admin_user: dict[str, Any] = Depends(get_admin_user),
-) -> dict[str, Any]:
+    method_type: Annotated[str, Query()],
+    baseline_mape: Annotated[float, Query()],
+    user_ids: Annotated[list[str], Body()],
+    admin_user: Annotated[dict[str, object], Depends(get_admin_user)],
+) -> dict[str, object]:
     """Trigger a manual drift check."""
     router_notif = NotificationRouter()
     drifted = await check_model_drift(

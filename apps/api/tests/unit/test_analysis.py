@@ -19,6 +19,7 @@ from src.analysis.statistics import (
     export_to_csv,
     export_to_json,
 )
+from src.methods.base import OptionParams
 
 
 @pytest.mark.unit
@@ -54,15 +55,31 @@ def test_compute_basic_stats() -> None:
 
 @pytest.mark.unit
 def test_calculate_greeks() -> None:
-    greeks = calculate_greeks(100, 100, 1, 0.2, 0.05)
+    params = OptionParams(
+        underlying_price=100.0,
+        strike_price=100.0,
+        time_to_expiry=1.0,
+        volatility=0.2,
+        risk_free_rate=0.05,
+        option_type="call",
+    )
+    greeks = calculate_greeks(params)
     assert "delta" in greeks
     assert "gamma" in greeks
 
 
 @pytest.mark.unit
 def test_calculate_implied_volatility() -> None:
-    iv = calculate_implied_volatility(10, 100, 100, 1, 0.05)
-    assert iv == pytest.approx(0.2)
+    params = OptionParams(
+        underlying_price=100.0,
+        strike_price=100.0,
+        time_to_expiry=1.0,
+        volatility=0.2,
+        risk_free_rate=0.05,
+        option_type="call",
+    )
+    iv = calculate_implied_volatility(10.45058, params)
+    assert iv == pytest.approx(0.2, abs=1e-4)
 
 
 @pytest.mark.unit
@@ -98,7 +115,15 @@ def test_check_stability() -> None:
 
 @pytest.mark.unit
 def test_analyze_mc_convergence() -> None:
-    res = analyze_mc_convergence(None, "standard_mc", [100, 200])
+    params = OptionParams(
+        underlying_price=100.0,
+        strike_price=100.0,
+        time_to_expiry=1.0,
+        volatility=0.2,
+        risk_free_rate=0.05,
+        option_type="call",
+    )
+    res = analyze_mc_convergence(params, "standard_mc", [100, 200])
     assert len(res) == 2
     assert res[0]["paths"] == 100
 

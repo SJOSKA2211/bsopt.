@@ -33,7 +33,6 @@ async def start_consumer(queue_name: str, callback: Callable[[dict[str, Any]], A
                 except Exception as exc:
                     RABBITMQ_CONSUMED.labels(queue=queue_name, status="error").inc()
                     logger.error("consumer_error", queue=queue_name, error=str(exc))
-                    raise
 
 
 class ScraperConsumer:

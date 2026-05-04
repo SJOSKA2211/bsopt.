@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import json
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from src.database.repository import get_latest_feature_snapshot, save_feature_snapshot
 
 if TYPE_CHECKING:
     from datetime import date
@@ -28,35 +31,15 @@ class FeatureStore:
         self, snapshot_date: date, features: dict[str, float], option_count: int
     ) -> None:
         """Persist a feature snapshot to the database."""
-        import json
+        await save_feature_snapshot(snapshot_date, features, option_count)
 
-        from src.database.neon_client import acquire
-
-        async with acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO feature_snapshots (snapshot_date, features, option_count)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (snapshot_date) DO UPDATE
-                SET features = EXCLUDED.features, option_count = EXCLUDED.option_count
-                """,
-                snapshot_date,
-                json.dumps(features),
-                option_count,
-            )
-
-    async def get_snapshot(self, snapshot_date: date) -> dict[str, float] | None:
-        """Retrieve a feature snapshot from the database."""
-        import json
-
-        from src.database.neon_client import acquire
-
-        async with acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT features FROM feature_snapshots WHERE snapshot_date = $1",
-                snapshot_date,
-            )
-            if row and row["features"]:
-                data = row["features"]
-                return json.loads(data) if isinstance(data, str) else dict(data)
+    async def get_snapshot(self, _snapshot_date: date) -> dict[str, Any] | None:
+        """Retrieve the latest feature snapshot (date parameter ignored for now)."""
+        row = await get_latest_feature_snapshot()
+        if not row:
             return None
+
+        features = row.get("features")
+        if isinstance(features, str):
+            return json.loads(features)  # type: ignore[no-any-return]
+        return features  # type: ignore[no-any-return]

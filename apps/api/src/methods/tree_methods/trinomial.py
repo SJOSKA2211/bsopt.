@@ -23,7 +23,7 @@ class TrinomialTree(BasePricer):
         delta_log_price = volatility * np.sqrt(3 * delta_time)
         up_factor = np.exp(delta_log_price)
 
-        # Probabilities (Boyle / Hull-White)
+        # Boyle / Hull-White probabilities
         drift_rate = risk_free_rate - 0.5 * volatility**2
         variance_term = (volatility**2 * delta_time + drift_rate**2 * delta_time**2) / (
             delta_log_price**2

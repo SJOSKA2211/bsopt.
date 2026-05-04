@@ -5,10 +5,15 @@ from __future__ import annotations
 import csv
 import io
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from src.methods.base import OptionParams
 
 
-def export_to_csv(data: list[dict[str, Any]]) -> str:
+def export_to_csv(data: list[dict[str, object]]) -> str:
     """Convert a list of dictionaries to a CSV string."""
     if not data:
         return ""
@@ -19,7 +24,7 @@ def export_to_csv(data: list[dict[str, Any]]) -> str:
     return output.getvalue()
 
 
-def export_to_json(data: list[dict[str, Any]]) -> str:
+def export_to_json(data: list[dict[str, object]]) -> str:
     """Convert a list of dictionaries to a formatted JSON string."""
     return json.dumps(data, indent=2, default=str)
 
@@ -41,36 +46,24 @@ def compute_basic_stats(prices: list[float]) -> dict[str, float]:
     }
 
 
-def calculate_greeks(
-    underlying_price: float,
-    strike_price: float,
-    time_to_expiry: float,
-    sigma: float,
-    r: float,
-    option_type: str = "call",
-) -> dict[str, float]:
+def calculate_greeks(params: OptionParams) -> dict[str, float]:
     """Calculate option Greeks using analytical formulas."""
-    # Placeholder for coverage; in real app this uses Black-Scholes formulas
-    return {"delta": 0.5, "gamma": 0.05, "vega": 0.1, "theta": -0.01, "rho": 0.02}
+    from src.methods.analytical import BlackScholesAnalytical
+
+    return BlackScholesAnalytical.greeks(params)
 
 
-def calculate_implied_volatility(
-    price: float,
-    underlying_price: float,
-    strike_price: float,
-    time_to_expiry: float,
-    r: float,
-    option_type: str = "call",
-) -> float:
+def calculate_implied_volatility(price: float, params: OptionParams) -> float:
     """Invert Black-Scholes to find implied volatility."""
-    # Placeholder for coverage
-    return 0.2
+    from src.methods.analytical import BlackScholesAnalytical
+
+    return BlackScholesAnalytical.implied_volatility(price, params)
 
 
-def calculate_error_metrics(computed: Any, benchmark: Any) -> dict[str, float]:
+def calculate_error_metrics(
+    computed: list[float] | np.ndarray[Any, Any], benchmark: list[float] | np.ndarray[Any, Any]
+) -> dict[str, float]:
     """Calculate MAPE and other error metrics."""
-    import numpy as np
-
     computed_arr = np.array(computed)
     benchmark_arr = np.array(benchmark)
     mape = np.mean(np.abs((computed_arr - benchmark_arr) / benchmark_arr)) * 100

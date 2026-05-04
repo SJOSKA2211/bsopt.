@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 from pywebpush import WebPushException, webpush
@@ -58,7 +58,7 @@ async def send_push_notification(n: Notification) -> bool:
     return True
 
 
-async def send_web_push(subscription_info: Any, title: str, body: str) -> bool:
+async def send_web_push(subscription_info: object, title: str, body: str) -> bool:
     """Utility to send a direct web push."""
     import os
 
@@ -66,12 +66,14 @@ async def send_web_push(subscription_info: Any, title: str, body: str) -> bool:
     if not private_key:
         return False
     try:
-        webpush(
-            subscription_info=(
-                subscription_info
-                if not isinstance(subscription_info, str)
-                else json.loads(subscription_info)
-            ),
+        sub = (
+            subscription_info
+            if not isinstance(subscription_info, str)
+            else json.loads(subscription_info)
+        )
+        await asyncio.to_thread(
+            webpush,
+            subscription_info=sub,
             data=json.dumps({"title": title, "body": body}),
             vapid_private_key=private_key,
             vapid_claims={"sub": "mailto:admin@example.com"},

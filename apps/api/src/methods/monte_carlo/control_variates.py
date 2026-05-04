@@ -31,7 +31,6 @@ class ControlVariateMonteCarlo(BasePricer):
         brownian_motion = np.cumsum(brownian_increments, axis=1)
 
         time_grid = np.linspace(delta_time, time_to_expiry, num_steps)
-        # S_t = S_0 * exp((r - 0.5*sigma^2)*t + sigma*W_t)
         paths = underlying_price * np.exp(
             (risk_free_rate - 0.5 * volatility**2) * time_grid + volatility * brownian_motion
         )

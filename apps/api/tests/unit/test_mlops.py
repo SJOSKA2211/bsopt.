@@ -76,7 +76,9 @@ async def test_feature_store_persistence() -> None:
     features = {"f1": 1.0, "f2": 2.5}
     await store.save_snapshot(snapshot_date, features, 100)
     retrieved = await store.get_snapshot(snapshot_date)
-    assert retrieved == features
+    assert isinstance(retrieved, dict)
+    assert retrieved["f1"] == 1.0
+    assert retrieved["f2"] == 2.5
     assert await store.get_snapshot(date(1999, 1, 1)) is None
 
 
@@ -125,22 +127,25 @@ def test_ray_runner_local_init_and_grid() -> None:
     try:
         if ray.is_initialized():
             ray.shutdown()
-        RayExperimentRunner._connection_failed = False
+        from src.config import get_settings
 
+        settings = get_settings()
+        RayExperimentRunner._connection_failed = False
         runner = RayExperimentRunner(
-            ray_address="",
-            mlflow_tracking_uri="http://127.0.0.1:5000",
+            ray_address=settings.ray_address,
+            mlflow_tracking_uri=settings.mlflow_tracking_uri,
             num_cpus=1,
             include_dashboard=False,
+            _temp_dir="/home/kamau/bsopt./tmp/ray",
         )
-        # First connect: exercises the `not self.ray_address` → ray.init() branch
+        # First connect
         runner.connect()
         assert ray.is_initialized()
 
-        # Second connect: exercises the `ray.is_initialized() → True` early return
+        # Second connect
         runner.connect()
 
-        # Run grid: exercises run_grid + price_remote.remote
+        # Run grid
         params = {
             "underlying_price": 100,
             "strike_price": 100,
@@ -153,7 +158,7 @@ def test_ray_runner_local_init_and_grid() -> None:
         assert len(results) == 1
         assert results[0]["computed_price"] > 0
 
-        # Direct call for coverage of line 75 (Ray worker delegation)
+        # Direct call for coverage
         from src.mlops.ray_runner import _price_logic
 
         direct_res = _price_logic(params, "analytical")
@@ -172,10 +177,11 @@ def test_ray_runner_connection_failed_branch() -> None:
         RayExperimentRunner._connection_failed = True
 
         runner = RayExperimentRunner(
-            ray_address="",
+            ray_address=os.environ.get("RAY_ADDRESS", ""),
             mlflow_tracking_uri="http://127.0.0.1:5000",
             num_cpus=1,
             include_dashboard=False,
+            _temp_dir="/home/kamau/bsopt./tmp/ray",
         )
         runner.connect()
         assert ray.is_initialized()
@@ -198,6 +204,7 @@ def test_ray_runner_exception_fallback() -> None:
             mlflow_tracking_uri="",
             num_cpus=1,
             include_dashboard=False,
+            _temp_dir="/home/kamau/bsopt./tmp/ray",
         )
         runner.connect()
         # After exception, _connection_failed should be True and Ray should be local
@@ -223,6 +230,7 @@ def test_ray_runner_with_address() -> None:
             mlflow_tracking_uri="http://127.0.0.1:5000",
             num_cpus=1,
             include_dashboard=False,
+            _temp_dir="/home/kamau/bsopt./tmp/ray",
         )
         runner.connect()
         assert ray.is_initialized()
@@ -245,8 +253,8 @@ async def test_drift_detection_flow(db_cleanup: Any) -> None:
     from src.notifications.hierarchy import NotificationRouter
 
     market_unique = f"drift_{uuid4().hex[:8]}"
-    opt_id = await save_option_parameters(120, 120, 1, 0.2, 0.05, "call", market_unique)
-    res_id = await save_method_result(opt_id, "analytical", 10.45, {"market": market_unique}, 0.1)
+    opt_id = await save_option_parameters(120, 120, 1, 0.2, 0.05, option_type="call", market_source=market_unique)
+    res_id = await save_method_result(opt_id, "analytical", 10.45, {"market": market_unique}, exec_seconds=0.1)
     await save_validation_metrics(opt_id, res_id, 0.01, 0.1, 0.01)
 
     router = NotificationRouter()

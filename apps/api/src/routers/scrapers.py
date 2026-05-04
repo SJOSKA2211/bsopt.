@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -15,19 +15,21 @@ router = APIRouter(prefix="/scrapers", tags=["Scrapers"])
 
 @router.get("/runs")
 async def get_scrape_runs(
-    limit: int = Query(10, le=50), user_id: str = Depends(get_current_user_id)
-) -> list[dict[str, Any]]:
+    user_id: Annotated[str, Depends(get_current_user_id)],
+    limit: Annotated[int, Query(le=50)] = 10,
+) -> list[dict[str, object]]:
     """Fetch recent scraper runs."""
     return await get_recent_scrape_runs(limit=limit)
 
 
 @router.post("/trigger")
 async def trigger_scraper(
-    market: str = Query(...), admin_user: dict[str, Any] = Depends(get_admin_user)
+    admin_user: Annotated[dict[str, object], Depends(get_admin_user)],
+    market: Annotated[str, Query()],
 ) -> dict[str, str]:
     """Trigger a scraper run via RabbitMQ."""
     try:
         await publish_scraper_task(market)
         return {"status": "success", "message": f"Scraper triggered for {market}"}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

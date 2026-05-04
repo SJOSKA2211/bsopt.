@@ -40,7 +40,10 @@ async def save_user(
             INSERT INTO users (id, email, display_name, role)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (id) DO UPDATE
-            SET email = EXCLUDED.email, display_name = EXCLUDED.display_name, role = EXCLUDED.role, updated_at = NOW()
+            SET email = EXCLUDED.email,
+                display_name = EXCLUDED.display_name,
+                role = EXCLUDED.role,
+                updated_at = NOW()
             """,
             str(user_id),
             email,
@@ -55,12 +58,10 @@ async def get_user_push_subscriptions(user_id: str) -> list[str]:
 
     async with acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT notification_preferences FROM users WHERE id = $1", UUID(user_id)
+            "SELECT notification_preferences::text AS prefs FROM users WHERE id = $1", UUID(user_id)
         )
-        if row and row["notification_preferences"]:
-            prefs = row["notification_preferences"]
-            if isinstance(prefs, str):
-                prefs = json.loads(prefs)
+        if row and row["prefs"]:
+            prefs = json.loads(row["prefs"])
             return cast("list[str]", prefs.get("push_subscriptions", []))
     return []
 
@@ -74,7 +75,7 @@ async def save_user_push_subscription(
     async with acquire() as conn:
         uid = UUID(user_id)
         # Get current prefs
-        row = await conn.fetchrow("SELECT notification_preferences FROM users WHERE id = $1", uid)
+        row = await conn.fetchrow("SELECT notification_preferences AS prefs FROM users WHERE id = $1", uid)
         if not row:
             # Create user if not exists (minimal for test/demo)
             await conn.execute(
@@ -84,18 +85,20 @@ async def save_user_push_subscription(
             )
             prefs: dict[str, Any] = {"push_subscriptions": []}
         else:
-            prefs = row["notification_preferences"] or {"push_subscriptions": []}
-            if isinstance(prefs, str):
-                prefs = json.loads(prefs)
+            raw_prefs = row["prefs"]
+            if isinstance(raw_prefs, str):
+                prefs = json.loads(raw_prefs)
+            else:
+                prefs = raw_prefs or {"push_subscriptions": []}
 
         subs = prefs.get("push_subscriptions", [])
         if subscription_info not in subs:
             subs.append(subscription_info)
 
         prefs["push_subscriptions"] = subs
-        print(f"DEBUG: saving prefs for {user_id}: {prefs}")
+        logger.debug("saving_prefs", user_id=user_id, prefs=prefs)
         await conn.execute(
-            "UPDATE users SET notification_preferences = $1 WHERE id = $2",
+            "UPDATE users SET notification_preferences = $1::jsonb WHERE id = $2",
             json.dumps(prefs),
             uid,
         )
@@ -148,6 +151,7 @@ async def save_market_data(
     ask: float | None,
     volume: int | None,
     oi: int | None,
+    *,
     data_source: str,
     implied_vol: float | None = None,
 ) -> None:
@@ -155,7 +159,9 @@ async def save_market_data(
     async with acquire() as conn:
         await conn.execute(
             """
-            INSERT INTO market_data (option_id, trade_date, bid, ask, volume, oi, data_source, implied_vol)
+            INSERT INTO market_data (
+                option_id, trade_date, bid, ask, volume, oi, data_source, implied_vol
+            )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (option_id, trade_date) DO UPDATE
             SET bid = EXCLUDED.bid, ask = EXCLUDED.ask, volume = EXCLUDED.volume,
@@ -178,6 +184,7 @@ async def save_option_parameters(
     time_to_expiry: float,
     volatility: float,
     risk_free_rate: float,
+    *,
     option_type: str,
     market_source: str,
     exercise_type: str = "european",
@@ -192,7 +199,11 @@ async def save_option_parameters(
                 volatility, risk_free_rate, option_type, exercise_type, market_source, created_by
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (underlying_price, strike_price, time_to_expiry, volatility, risk_free_rate, option_type, exercise_type, market_source)
+            ON CONFLICT (
+                underlying_price, strike_price, time_to_expiry,
+                volatility, risk_free_rate, option_type,
+                exercise_type, market_source
+            )
             DO UPDATE SET updated_at = NOW()
             RETURNING id
             """,
@@ -231,14 +242,15 @@ async def save_scrape_run(
 
 
 async def update_scrape_run(
-    run_id: str | UUID, finished_at: datetime, row_counts: int, status: str
+    run_id: str | UUID, finished_at: datetime, rows_inserted: int, status: str
 ) -> None:
     """Update an existing scrape run."""
     async with acquire() as conn:
         await conn.execute(
-            "UPDATE scrape_runs SET finished_at = $1, row_counts = $2, status = $3 WHERE id = $4",
+            "UPDATE scrape_runs SET finished_at = $1, rows_inserted = $2, status = $3 "
+            "WHERE id = $4",
             finished_at,
-            row_counts,
+            rows_inserted,
             status,
             str(run_id),
         )
@@ -249,7 +261,7 @@ async def query_experiments(
     market_source: str | None = None,
     limit: int = 50,
     cursor: datetime | None = None,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Query experiment results with cursor-based pagination and filtering."""
     query = """
         SELECT r.*, p.underlying_price, p.strike_price, p.time_to_expiry, p.option_type
@@ -280,7 +292,7 @@ async def query_experiments(
         return [dict(row) for row in rows]
 
 
-async def query_notifications(user_id: str | UUID, limit: int = 20) -> list[dict[str, Any]]:
+async def query_notifications(user_id: str | UUID, limit: int = 20) -> list[dict[str, object]]:
     """Fetch recent notifications for a user."""
     async with acquire() as conn:
         rows = await conn.fetch(
@@ -304,9 +316,12 @@ async def query_market_data(
     option_id: str | UUID | None = None,
     market_source: str | None = None,
     limit: int = 100,
-) -> list[dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Fetch recent market data records."""
-    query = "SELECT m.*, p.underlying_price, p.strike_price, p.option_type FROM market_data m JOIN option_parameters p ON m.option_id = p.id WHERE 1=1"
+    query = (
+        "SELECT m.*, p.underlying_price, p.strike_price, p.option_type "
+        "FROM market_data m JOIN option_parameters p ON m.option_id = p.id WHERE 1=1"
+    )
     args: list[Any] = []
 
     if option_id:
@@ -330,7 +345,8 @@ async def save_method_result(
     option_id: str | UUID,
     method_type: str,
     computed_price: float,
-    parameter_set: dict[str, Any],
+    parameter_set: dict[str, object],
+    *,
     exec_seconds: float,
     converged: bool = True,
     mlflow_run_id: str | None = None,
@@ -369,7 +385,7 @@ async def save_method_result(
         return str(row["id"]) if row else ""
 
 
-async def get_latest_metrics() -> list[dict[str, Any]]:
+async def get_latest_metrics() -> list[dict[str, object]]:
     """Fetch latest pricing metrics for the dashboard."""
     async with acquire() as conn:
         rows = await conn.fetch("SELECT * FROM method_results ORDER BY created_at DESC LIMIT 10")
@@ -377,7 +393,7 @@ async def get_latest_metrics() -> list[dict[str, Any]]:
 
 
 async def save_model_metadata(
-    name: str, version: str, artifact_uri: str, metrics: dict[str, Any]
+    name: str, version: str, artifact_uri: str, metrics: dict[str, object]
 ) -> None:
     """Save model metadata to ml_experiments table."""
     async with acquire() as conn:
@@ -393,7 +409,7 @@ async def save_model_metadata(
         )
 
 
-async def get_latest_model(name: str) -> dict[str, Any]:
+async def get_latest_model(name: str) -> dict[str, object]:
     """Fetch the latest model metadata by name."""
     async with acquire() as conn:
         row = await conn.fetchrow(
@@ -427,11 +443,12 @@ async def save_notification(
         return str(row["id"]) if row else ""
 
 
-async def get_unread_notifications(user_id: str | UUID) -> list[dict[str, Any]]:
+async def get_unread_notifications(user_id: str | UUID) -> list[dict[str, object]]:
     """Fetch all unread notifications for a user."""
     async with acquire() as conn:
         rows = await conn.fetch(
-            "SELECT * FROM notifications WHERE user_id = $1 AND read = FALSE ORDER BY created_at DESC",
+            "SELECT * FROM notifications WHERE user_id = $1 AND read = FALSE "
+            "ORDER BY created_at DESC",
             str(user_id),
         )
         return [dict(row) for row in rows]
@@ -448,10 +465,14 @@ async def save_validation_metrics(
     async with acquire() as conn:
         await conn.execute(
             """
-            INSERT INTO validation_metrics (option_id, method_result_id, absolute_error, mape, market_deviation)
+            INSERT INTO validation_metrics (
+                option_id, method_result_id, absolute_error, mape, market_deviation
+            )
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (option_id, method_result_id) DO UPDATE
-            SET absolute_error = EXCLUDED.absolute_error, mape = EXCLUDED.mape, market_deviation = EXCLUDED.market_deviation
+            SET absolute_error = EXCLUDED.absolute_error,
+                mape = EXCLUDED.mape,
+                market_deviation = EXCLUDED.market_deviation
             """,
             str(option_id),
             str(method_result_id),
@@ -483,7 +504,7 @@ async def save_scrape_error(
         )
 
 
-async def get_recent_scrape_runs(limit: int = 10) -> list[dict[str, Any]]:
+async def get_recent_scrape_runs(limit: int = 10) -> list[dict[str, object]]:
     """Fetch recent scrape runs."""
     async with acquire() as conn:
         rows = await conn.fetch(
@@ -493,7 +514,7 @@ async def get_recent_scrape_runs(limit: int = 10) -> list[dict[str, Any]]:
 
 
 async def save_feature_snapshot(
-    snapshot_date: date, features: dict[str, Any], option_count: int
+    snapshot_date: date, features: dict[str, object], option_count: int
 ) -> None:
     """Save a feature snapshot for MLOps lineage."""
     async with acquire() as conn:
@@ -510,7 +531,7 @@ async def save_feature_snapshot(
         )
 
 
-async def get_latest_feature_snapshot() -> dict[str, Any] | None:
+async def get_latest_feature_snapshot() -> dict[str, object] | None:
     """Fetch the latest feature snapshot."""
     async with acquire() as conn:
         row = await conn.fetchrow(
@@ -519,21 +540,30 @@ async def get_latest_feature_snapshot() -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
-async def get_all_experiments() -> list[dict[str, Any]]:
+async def get_feature_snapshot(snapshot_date: date) -> dict[str, object] | None:
+    """Fetch a feature snapshot by specific date."""
+    async with acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM feature_snapshots WHERE snapshot_date = $1", snapshot_date
+        )
+        return dict(row) if row else None
+
+
+async def get_all_experiments() -> list[dict[str, object]]:
     """Fetch all experiments from ml_experiments table."""
     async with acquire() as conn:
         rows = await conn.fetch("SELECT * FROM ml_experiments ORDER BY created_at DESC")
         return [dict(row) for row in rows]
 
 
-async def get_experiment_by_id(exp_id: UUID | str) -> dict[str, Any] | None:
+async def get_experiment_by_id(exp_id: UUID | str) -> dict[str, object] | None:
     """Fetch a specific experiment by its UUID."""
     async with acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM ml_experiments WHERE id = $1", str(exp_id))
         return dict(row) if row else None
 
 
-async def get_option_parameters(opt_id: UUID | str) -> dict[str, Any] | None:
+async def get_option_parameters(opt_id: UUID | str) -> dict[str, object] | None:
     """Fetch option parameters by UUID."""
     async with acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM option_parameters WHERE id = $1", str(opt_id))

@@ -1,4 +1,4 @@
-"""Unit tests for watchdog handler — Phase 3."""
+"""Unit tests for watchdog handler — Section 15.1 Implementation."""
 
 from __future__ import annotations
 
@@ -18,73 +18,49 @@ def test_detect_market() -> None:
     assert _detect_market("spy_data.csv") == "spy"
     assert _detect_market("NSE_data.csv") == "nse"
     assert _detect_market("random.csv") == "unknown"
+    assert _detect_market("") == "unknown"
 
 
 @pytest.mark.unit
-@pytest.mark.asyncio
-async def test_handler_logic(tmp_path: Path) -> None:
+def test_handler_logic(tmp_path: Path) -> None:
+    """Test handler logic. Note: No @pytest.mark.asyncio because on_created uses asyncio.run."""
     handler = BsoptFileHandler()
 
-    # Valid file
+    # Valid file (SPY)
     file_path = tmp_path / "spy_data.csv"
     file_path.touch()
     event = FileCreatedEvent(str(file_path))
-    # Should not raise, even if it tries to publish (real RabbitMQ is up)
+    # This will call asyncio.run(publish_watchdog_task). 
+    # Since RabbitMQ is up (conftest provides it), it should work or fail gracefully.
     handler.on_created(event)
 
-    # Gzip file
-    gz_path = tmp_path / "nse_data.csv.gz"
-    gz_path.touch()
-    event_gz = FileCreatedEvent(str(gz_path))
-    handler.on_created(event_gz)
+    # Valid file (NSE)
+    nse_path = tmp_path / "nse_data.json"
+    nse_path.touch()
+    handler.on_created(FileCreatedEvent(str(nse_path)))
 
     # Invalid extension
     txt_path = tmp_path / "data.txt"
     txt_path.touch()
-    event_txt = FileCreatedEvent(str(txt_path))
-    handler.on_created(event_txt)
+    handler.on_created(FileCreatedEvent(str(txt_path)))
 
     # Directory event (should be ignored)
     dir_path = tmp_path / "sub_dir"
     dir_path.mkdir()
     event_dir = DirCreatedEvent(str(dir_path))
-    handler.on_created(event_dir)
-
-    # Bare .gz
-    bare_gz = tmp_path / "spy_raw.gz"
-    bare_gz.touch()
-    handler.on_created(FileCreatedEvent(str(bare_gz)))
-
-    # Invalid .gz (e.g. .txt.gz)
-    invalid_gz = tmp_path / "spy_raw.txt.gz"
-    invalid_gz.touch()
-    handler.on_created(FileCreatedEvent(str(invalid_gz)))
-
-
-@pytest.mark.unit
-def test_handler_sync_loop_fallback(tmp_path: Path) -> None:
-    # This test runs without a pytest-asyncio loop in this thread
-    handler = BsoptFileHandler()
-    file_path = tmp_path / "spy_sync.csv"
-    file_path.touch()
-    event = FileCreatedEvent(str(file_path))
-    # Should trigger the 'except RuntimeError' and call asyncio.run
-    handler.on_created(event)
+    handler.on_created(event_dir) # type: ignore[arg-type]
 
 
 @pytest.mark.unit
 def test_start_watchdog(tmp_path: Path) -> None:
     from src.data.watchdog_handler import start_watchdog
 
-    observer = start_watchdog(str(tmp_path / "watch"))
+    watch_dir = tmp_path / "watch"
+    watch_dir.mkdir() # Create it manually as start_watchdog doesn't do it in MIP
+    observer = start_watchdog(str(watch_dir))
     assert observer.is_alive()
     observer.stop()
     observer.join()
-
-
-@pytest.mark.unit
-def test_detect_market_empty_filename() -> None:
-    assert _detect_market("") == "unknown"
 
 
 @pytest.mark.unit
@@ -93,4 +69,4 @@ def test_supported_extensions_content() -> None:
 
     assert ".csv" in SUPPORTED_EXTENSIONS
     assert ".json" in SUPPORTED_EXTENSIONS
-    assert ".gz" in SUPPORTED_EXTENSIONS
+    assert len(SUPPORTED_EXTENSIONS) == 2

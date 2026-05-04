@@ -37,14 +37,19 @@ async def test_storage_upload_lifecycle() -> None:
 async def test_storage_upload_compression() -> None:
     settings = get_settings()
     bucket = settings.minio_bucket_exports
-    obj_name = "test_comp.txt"
-    # Create data larger than 1024 threshold
+    
+    # Case 1: Doesn't end with .gz, should add it
+    obj_name1 = "test_comp.txt"
     data = b"A" * 2000
+    await StorageService.upload_file(bucket, obj_name1, data)
 
-    await StorageService.upload_file(bucket, obj_name, data)
+    # Case 2: Already ends with .gz, should NOT add another
+    obj_name2 = "test_already.gz"
+    await StorageService.upload_file(bucket, obj_name2, data)
 
-    # Verify it was compressed (object name should have .gz)
     async with get_minio() as client:
-        res = await client.list_objects_v2(Bucket=bucket, Prefix="test_comp")
+        res = await client.list_objects_v2(Bucket=bucket, Prefix="test_")
         keys = [obj["Key"] for obj in res.get("Contents", [])]
         assert "test_comp.txt.gz" in keys
+        assert "test_already.gz" in keys
+        assert "test_already.gz.gz" not in keys

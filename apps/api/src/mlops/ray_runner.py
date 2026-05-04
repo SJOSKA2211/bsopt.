@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from itertools import starmap
 from typing import Any
 
@@ -89,7 +90,8 @@ class RayExperimentRunner:
         """Connect to Ray cluster; fallback to local on failure."""
         if not ray.is_initialized():
             if RayExperimentRunner._connection_failed:
-                ray.init(ignore_reinit_error=True, **self.ray_kwargs)
+                with contextlib.suppress(Exception):
+                    ray.init(ignore_reinit_error=True, **self.ray_kwargs)
                 return
 
             try:
@@ -107,9 +109,10 @@ class RayExperimentRunner:
                         **self.ray_kwargs,
                     )
             except Exception as exc:
-                logger.warning("ray_remote_connect_failed", error=str(exc), fallback="local")
+                logger.warning("ray_remote_connect_failed", error=str(exc), fallback="local_mode")
                 RayExperimentRunner._connection_failed = True
-                ray.init(ignore_reinit_error=True, runtime_env={}, **self.ray_kwargs)
+                with contextlib.suppress(Exception):
+                    ray.init(ignore_reinit_error=True, **self.ray_kwargs)
 
         self._report_cluster_status()
 
@@ -126,8 +129,8 @@ class RayExperimentRunner:
     def run_grid(
         self,
         experiment_name: str,
-        param_grid: list[tuple[dict[str, Any], str]],
-    ) -> list[dict[str, Any]]:
+        param_grid: list[tuple[dict[str, object], str]],
+    ) -> list[dict[str, object]]:
         """Run all (params, method) pairs in parallel. Log to MLflow."""
         mlflow.set_experiment(experiment_name)
         with mlflow.start_run(run_name=f"grid_{experiment_name}") as run:

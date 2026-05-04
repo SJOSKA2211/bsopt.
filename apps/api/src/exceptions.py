@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 
 class BsoptError(Exception):
     """Base exception for all bsopt errors."""
@@ -31,7 +29,7 @@ class CFLViolationError(PricingError):
 class ValidationError(BsoptError):
     """Raised when data validation fails."""
 
-    def __init__(self, message: str, errors: Any = None) -> None:
+    def __init__(self, message: str, errors: object = None) -> None:
         self.errors = errors
         super().__init__(message)
 

@@ -16,6 +16,7 @@ def transform_market_row(row: dict[str, Any]) -> dict[str, Any]:
         "lastPrice": "mid_price",
         "expirationDate": "maturity_date",
         "impliedVolatility": "implied_vol",
+        "v": "volume",
     }
 
     for key, target in mappings.items():

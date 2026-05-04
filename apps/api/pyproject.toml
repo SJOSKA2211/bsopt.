@@ -44,7 +44,7 @@ dev = [
 packages = ["src"]
 
 [tool.uv]
-compile-bytecode = true
+compile-bytecode = true   # faster cold-start in Docker
 
 [tool.black]
 line-length    = 100
@@ -57,14 +57,13 @@ line_length = 100
 [tool.ruff]
 line-length    = 100
 target-version = "py314"
-preview = true
 
 [tool.ruff.lint]
 select = [
   "E","W","F","I","B","C4","UP","N","S","ANN","SIM","TCH",
   "RUF","ERA","PIE","PL","PERF","FURB",
 ]
-ignore = ["S101","PLC0415","B008","ANN401","PLW0603","PLR0913","E501","PLR6301","PLR2004","RUF029","ERA001","PLR0914","PLR0917","PLR0912","PLR0915","PLR0916", "RUF069", "PLC1901", "B017", "S110", "PLC2701", "ANN001", "ANN201", "B904", "S105", "S108", "E701", "SIM105", "B903", "F821", "PIE790", "F404", "E402", "I001"]
+ignore = ["ANN101","ANN102","S101","PLC0415","PLR0913"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**"   = ["S101","ANN"]
@@ -83,7 +82,7 @@ show_error_codes       = true
 pretty                 = true
 
 [[tool.mypy.overrides]]
-module = ["aioboto3.*", "ray.*", "mlflow.*", "pywebpush.*", "scipy.*", "asyncpg.*", "prometheus_client.*", "structlog.*"]
+module = ["aioboto3.*", "aiobotocore.*", "ray.*", "mlflow.*", "pywebpush.*", "scipy.*", "asyncpg.*", "prometheus_client.*", "structlog.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

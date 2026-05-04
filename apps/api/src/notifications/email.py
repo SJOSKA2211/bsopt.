@@ -44,7 +44,8 @@ async def send_email_notification(n: Notification) -> bool:
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, headers=headers, json=payload)
-            if response.status_code == 201:
+            status_created = 201
+            if response.status_code == status_created:
                 logger.info("email_sent", user_id=n.user_id, title=n.title)
                 return True
             else:
